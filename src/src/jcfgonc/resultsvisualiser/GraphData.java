@@ -27,6 +27,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import visual.GraphStreamUtils;
 
+/**
+ * Holds data/properties regarding a Semantic Graph (class StringGraph) and related GUI functions using GraphStream's API
+ * 
+ * @author jcfgonc@gmail.com
+ *
+ */
 public class GraphData {
 
 	private MultiGraph multiGraph;

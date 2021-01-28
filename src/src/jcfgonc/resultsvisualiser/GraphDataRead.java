@@ -15,9 +15,15 @@ import structures.Ticker;
 import utils.NonblockingBufferedReader;
 import utils.VariousUtils;
 
+/**
+ * Reads a TSV (tab separated values) file and creates a List of GraphData instances, one for each row of the file (excluding the first row which is the required header).
+ * 
+ * @author jcfgonc@gmail.com
+ *
+ */
 public class GraphDataRead {
 
-	public static void readCSV(String filename) throws IOException {
+	public static void readTSV(String filename) throws IOException {
 		System.out.print("loading " + filename + " ...");
 		Ticker t = new Ticker();
 		ArrayList<GraphData> graphs = new ArrayList<>(1 << 16);
@@ -147,7 +153,7 @@ public class GraphDataRead {
 	public static void main(String[] args) throws IOException {
 		String filename = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-01-26_04-16-50.tsv";
 		while (true)
-			readCSV(filename);
+			readTSV(filename);
 	}
 
 }
