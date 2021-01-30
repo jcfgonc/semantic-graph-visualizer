@@ -4,13 +4,13 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Set;
 
 import javax.swing.border.LineBorder;
 
+import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.Layouts;
@@ -21,10 +21,9 @@ import org.graphstream.ui.view.util.DefaultMouseManager;
 
 import graph.GraphReadWrite;
 import graph.StringGraph;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import structures.DataType;
 import visual.GraphStreamUtils;
 
 /**
@@ -39,17 +38,16 @@ public class GraphData {
 	private Viewer viewer;
 	private DefaultView defaultView;
 	private boolean selected;
-	private Int2ObjectMap<String> detailsMap;
-	private Object2IntMap<String> detailsHeader;
 	private StringGraph stringGraph;
 	private boolean loaded;
 	private String id;
 	private MouseAdapter mouseAdapter;
-	private HashMap<String, String> columnKey2Description;
 	private Layout layout;
 	private Object2IntOpenHashMap<String> integerProperties;
 	private Object2DoubleOpenHashMap<String> doubleProperties;
 	private HashMap<String, String> stringProperties;
+	private DualHashBidiMap<String, Integer> variable2columnNumber;
+	private HashMap<String, DataType> variableTypes;
 
 	public GraphData(String id, StringGraph graph) {
 		this.id = id;
@@ -179,55 +177,28 @@ public class GraphData {
 	}
 
 	private void createToolTipText() {
-		if (detailsHeader == null)
-			return;
-		if (detailsMap == null)
-			return;
-		if (columnKey2Description == null)
-			return;
-
 		// n:time n:relationTypes n:relationTypesStd n:cycles n:patternEdges n:patternVertices n:matches s:query s:pattern s:conceptVarMap s:hash
 		String text = "<html>";
-		for (String column : sortColumnsAscendingDescription(detailsHeader.keySet(), columnKey2Description)) {
-			String columnDescription = columnKey2Description.get(column);
-			if (columnDescription == null)
-				continue;
-			int columnId = detailsHeader.getInt(column);
-			String value = detailsMap.get(columnId);
-			text += String.format("%s:\t%s<br>", columnDescription, value);
+		for (int id = 0; id < variable2columnNumber.size(); id++) { // use tsv/user order
+			String var = variable2columnNumber.getKey(id);
+			String value = "NULL";
+			DataType dataType = variableTypes.get(var);
+			switch (dataType) {
+			case INTEGER:
+				value = Integer.toString(integerProperties.getInt(var));
+				break;
+			case DOUBLE:
+				value = Double.toString(doubleProperties.getDouble(var));
+				break;
+			case STRING:
+				value = stringProperties.get(var);
+				break;
+			default:
+				break;
+			}
+			text += String.format("%s:\t%s<br>", var, value); // var:\tvalue
 		}
 		defaultView.setToolTipText(text);
-	}
-
-	private ArrayList<String> sortColumnsAscendingDescription(Collection<String> columnIds, HashMap<String, String> col2Description) {
-		ArrayList<String> c = new ArrayList<>(columnIds);
-		c.sort(new Comparator<String>() {
-
-			@Override
-			public int compare(String o1, String o2) {
-				String d1 = col2Description.get(o1);
-				String d2 = col2Description.get(o2);
-				if (d1 == null && d2 == null) {
-					return 0;
-				}
-				if (d1 == null)
-					return -1;
-				if (d2 == null)
-					return 1;
-				return d1.compareTo(d2);
-			}
-		});
-		return c;
-	}
-
-	public String getDetails(String column) {
-		int columnId = detailsHeader.getInt(column);
-		String value = detailsMap.get(columnId);
-		return value;
-	}
-
-	public Object2IntMap<String> getDetailsHeader() {
-		return detailsHeader;
 	}
 
 	private void addMouseListener() {
@@ -275,16 +246,93 @@ public class GraphData {
 		return stringGraph;
 	}
 
-	public void addIntegerProperty(String variable, int value) {
-		this.integerProperties.put(variable, value);
+	public int addIntegerProperty(String variable, int value) {
+		return integerProperties.put(variable, value);
 	}
 
-	public void addDoubleProperty(String variable, double value) {
-		this.doubleProperties.put(variable, value);
+	public double addDoubleProperty(String variable, double value) {
+		return doubleProperties.put(variable, value);
 	}
 
-	public void addStringProperty(String variable, String value) {
-		this.stringProperties.put(variable, value);
+	public String addStringProperty(String variable, String value) {
+		return stringProperties.put(variable, value);
+	}
+
+	public int getIntegerProperty(String variable) {
+		return integerProperties.getInt(variable);
+	}
+
+	public double getDoubleProperty(String variable) {
+		return doubleProperties.getDouble(variable);
+	}
+
+	public String getStringProperty(String variable) {
+		return stringProperties.get(variable);
+	}
+
+	public Set<String> getIntegerVariables() {
+		return Collections.unmodifiableSet(integerProperties.keySet());
+	}
+
+	public Set<String> getDoubleVariables() {
+		return Collections.unmodifiableSet(doubleProperties.keySet());
+	}
+
+	public Set<String> getStringVariables() {
+		return Collections.unmodifiableSet(stringProperties.keySet());
+	}
+
+	public void setVariable2ColumnNumber(DualHashBidiMap<String, Integer> variable2columnNumber) {
+		this.variable2columnNumber = variable2columnNumber;
+	}
+
+	public void setVariableTypes(HashMap<String, DataType> variableTypes) {
+		this.variableTypes = variableTypes;
+	}
+
+	public DataType getVariableType(String var) {
+		return variableTypes.get(var);
+	}
+
+	public int getNumberOfVars() {
+		return variable2columnNumber.size();
+	}
+
+	public int getColumnNumberFromVariable(String var) {
+		return variable2columnNumber.get(var).intValue();
+	}
+
+	public String getVariableFromColumnNumber(int column) {
+		return variable2columnNumber.inverseBidiMap().get(Integer.valueOf(column));
+	}
+
+	public boolean isVariableNumeric(String variable) {
+		DataType type = variableTypes.get(variable);
+		if (type == null) {
+			throw new RuntimeException("variable " + variable + "does not exist");
+		}
+		if (type == DataType.DOUBLE || type == DataType.INTEGER)
+			return true;
+		return false;
+	}
+
+	public double getNumericVariable(String variable) {
+		if (isVariableNumeric(variable)) {
+			if (integerProperties.containsKey(variable))
+				return integerProperties.getInt(variable);
+			else if (doubleProperties.containsKey(variable))
+				return doubleProperties.getDouble(variable);
+			throw new RuntimeException("variable " + variable + "does not exist");
+		}
+		throw new RuntimeException("variable " + variable + "is not numeric");
+	}
+
+	public boolean isVariableString(String variable) {
+		DataType type = variableTypes.get(variable);
+		if (type == null) {
+			throw new RuntimeException("variable " + variable + "does not exist");
+		}
+		return (type == DataType.STRING);
 	}
 
 }

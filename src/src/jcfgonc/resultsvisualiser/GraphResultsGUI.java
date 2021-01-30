@@ -23,8 +23,6 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -56,9 +54,7 @@ import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.ui.swingViewer.DefaultView;
 import org.graphstream.ui.view.Viewer;
 
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import slider.RangeSlider;
-import structures.TypeMap;
 import utils.OSTools;
 
 public class GraphResultsGUI extends JFrame {
@@ -66,7 +62,7 @@ public class GraphResultsGUI extends JFrame {
 	private static final int FONT_SIZE_MINIMUM = 8;
 	private static final int FONT_SIZE_DEFAULT = 18;
 	private static final int FONT_SIZE_MAXIMUM = 48;
-	private static final String graphDatafile = "..\\PatternMiner\\results\\resultsV22.csv";
+	private static final String graphDatafile = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-01-26_04-16-50.tsv";
 	private static final int NODE_SIZE_MINIMUM = 0;
 	private static final int NODE_SIZE_DEFAULT = 24;
 	private static final int NODE_SIZE_MAXIMUM = 100;
@@ -102,10 +98,10 @@ public class GraphResultsGUI extends JFrame {
 	private JPanel graphPanel;
 	private JScrollPane scrollPane;
 	private JPanel settingsPanel;
-	private JSlider numColumnsSlider;
+	private JSlider numVariablesSlider;
 	private JSplitPane horizontalPanel;
-	private JPanel numColumnsPanel;
-	private JLabel numColumnsLabel;
+	private JPanel numVariablesPanel;
+	private JLabel numVariablesLabel;
 	private JPanel fontScalePanel;
 	private JSlider fontScaleSlider;
 	private JLabel fontSizeLabel;
@@ -114,7 +110,7 @@ public class GraphResultsGUI extends JFrame {
 	private JLabel nodeSizeLabel;
 	private JPanel renderingControlPanel;
 	private JPanel filteringPanel;
-	private JComboBox<String> sortingColumnBox;
+	private JComboBox<String> sortingVariableBox;
 	private JPanel numGraphsPanel;
 	private JPanel sortingPanel;
 	private JSlider numGraphsSlider;
@@ -133,15 +129,15 @@ public class GraphResultsGUI extends JFrame {
 	private JMenuItem saveSelectionMenuItem;
 	private JMenuItem openFileMenuItem;
 	private JLabel sortLabel;
-	private JPanel columnsFilterPanel;
+	private JPanel variablesFilterPanel;
 	private JMenuItem saveFilteredMenuItem;
 	private GraphFilter graphFilter;
 	private MutableBoolean shiftKeyPressed;
-	private HashMap<String, JLabel> minimumColumnLabelMap;
-	private HashMap<String, JLabel> maximumColumnLabelMap;
+	private HashMap<String, JLabel> minimumVariableLabelMap;
+	private HashMap<String, JLabel> maximumVariableLabelMap;
 	private int graphFontSize = FONT_SIZE_DEFAULT;
 	private int graphNodeSize = NODE_SIZE_DEFAULT;
-	private int graphsPerColumn = GRAPHS_PER_COLUMN_DEFAULT;
+	private int graphsPerVariable = GRAPHS_PER_COLUMN_DEFAULT;
 	private int graphSize;
 	private JComboBox<String> sortingDirectionBox;
 	private JMenu mnTools;
@@ -220,25 +216,25 @@ public class GraphResultsGUI extends JFrame {
 		settingsPanel.add(renderingControlPanel);
 		renderingControlPanel.setLayout(new BoxLayout(renderingControlPanel, BoxLayout.Y_AXIS));
 
-		numColumnsPanel = new JPanel();
-		renderingControlPanel.add(numColumnsPanel);
-		numColumnsPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(255, 255, 255), new Color(160, 160, 160)),
+		numVariablesPanel = new JPanel();
+		renderingControlPanel.add(numVariablesPanel);
+		numVariablesPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(255, 255, 255), new Color(160, 160, 160)),
 				"Graphs per Row", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 
-		numColumnsSlider = new JSlider(GRAPHS_PER_COLUMN_MINIMUM, GRAPHS_PER_COLUMN_MAXIMUM, GRAPHS_PER_COLUMN_DEFAULT);
-		numColumnsSlider.setPaintLabels(true);
-		numColumnsPanel.add(numColumnsSlider);
-		numColumnsSlider.addChangeListener(new ChangeListener() {
+		numVariablesSlider = new JSlider(GRAPHS_PER_COLUMN_MINIMUM, GRAPHS_PER_COLUMN_MAXIMUM, GRAPHS_PER_COLUMN_DEFAULT);
+		numVariablesSlider.setPaintLabels(true);
+		numVariablesPanel.add(numVariablesSlider);
+		numVariablesSlider.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
 				if (GraphResultsGUI.this.isVisible()) {
-					updateGraphsColumnControl(source);
+					updateGraphsVariableControl(source);
 				}
 			}
 		});
 
-		numColumnsLabel = new JLabel(Integer.toString(4));
-		numColumnsPanel.add(numColumnsLabel);
+		numVariablesLabel = new JLabel(Integer.toString(4));
+		numVariablesPanel.add(numVariablesLabel);
 
 		fontScalePanel = new JPanel();
 		renderingControlPanel.add(fontScalePanel);
@@ -339,17 +335,17 @@ public class GraphResultsGUI extends JFrame {
 		sortingDirectionBox.setModel(new DefaultComboBoxModel<String>(new String[] { "ascending", "descending" }));
 		sortingPanel.add(sortingDirectionBox);
 
-		sortingColumnBox = new JComboBox<>();
-		sortingPanel.add(sortingColumnBox);
-		sortingColumnBox.addActionListener(new ActionListener() {
+		sortingVariableBox = new JComboBox<>();
+		sortingPanel.add(sortingVariableBox);
+		sortingVariableBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				sortGraphs();
 			}
 		});
 
-		columnsFilterPanel = new JPanel();
-		filteringPanel.add(columnsFilterPanel);
-		columnsFilterPanel.setLayout(new BoxLayout(columnsFilterPanel, BoxLayout.Y_AXIS));
+		variablesFilterPanel = new JPanel();
+		filteringPanel.add(variablesFilterPanel);
+		variablesFilterPanel.setLayout(new BoxLayout(variablesFilterPanel, BoxLayout.Y_AXIS));
 
 		emptyPanel = new JPanel();
 		emptyPanel.setBorder(null);
@@ -511,6 +507,7 @@ public class GraphResultsGUI extends JFrame {
 		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 		visibleGraphList.parallelStream().forEach(gd -> {
 			Viewer viewer = gd.getViewer();
+			viewer.disableAutoLayout();
 			viewer.enableAutoLayout();
 		});
 	}
@@ -583,82 +580,57 @@ public class GraphResultsGUI extends JFrame {
 
 	private void createSortingOptions() {
 		// create sorting box options
-		GraphData gd = graphFilter.getVisibleGraphList().get(0);
-		ObjectSet<String> columns = gd.getDetailsHeader().keySet();
-		ArrayList<String> sortingColumns = new ArrayList<>();
-		for (String column : sortColumnsAscendingDescription(columns)) {
-			String columnDescription = graphFilter.getColumnDescription(column);
-			if (columnDescription != null) {
-				sortingColumns.add(columnDescription);
+		GraphData gd0 = graphFilter.getVisibleGraphList().get(0);
+		int numberOfVars = gd0.getNumberOfVars();
+		ArrayList<String> sortingVariables = new ArrayList<>(numberOfVars);
+		for (int i = 0; i < numberOfVars; i++) {
+			String variable = gd0.getVariableFromColumnNumber(i);
+			if (gd0.isVariableNumeric(variable) || gd0.isVariableString(variable)) {
+				sortingVariables.add(variable);
 			}
 		}
-		sortingColumnBox.setModel(new DefaultComboBoxModel<String>(sortingColumns.toArray(new String[0])));
-	}
-
-	private ArrayList<String> sortColumnsAscendingDescription(Collection<String> columnIds) {
-		ArrayList<String> c = new ArrayList<>(columnIds);
-		c.sort(new Comparator<String>() {
-
-			@Override
-			public int compare(String o1, String o2) {
-				String d1 = graphFilter.getColumnDescription(o1);
-				String d2 = graphFilter.getColumnDescription(o2);
-				if (d1 == null && d2 == null) {
-					return 0;
-				}
-				if (d1 == null)
-					return -1;
-				if (d2 == null)
-					return 1;
-				return d1.compareTo(d2);
-			}
-		});
-		return c;
+		sortingVariableBox.setModel(new DefaultComboBoxModel<String>(sortingVariables.toArray(new String[0])));
 	}
 
 	private void createFilteringPanels() {
 		GraphData gd = graphFilter.getVisibleGraphList().get(0);
-		ObjectSet<String> columns = gd.getDetailsHeader().keySet();
-		minimumColumnLabelMap = new HashMap<>();
-		maximumColumnLabelMap = new HashMap<>();
-		TypeMap columnsTypeMap = graphFilter.getColumnTypeMap();
-		for (String column : sortColumnsAscendingDescription(columns)) {
-			if (!columnsTypeMap.isTypeNumeric(column))
-				continue;
-			String columnDescription = graphFilter.getColumnDescription(column);
-			if (columnDescription == null)
+		minimumVariableLabelMap = new HashMap<>();
+		maximumVariableLabelMap = new HashMap<>();
+		for (int i = 0; i < gd.getNumberOfVars(); i++) {
+			String variable = gd.getVariableFromColumnNumber(i);
+			if (!gd.isVariableNumeric(variable))
 				continue;
 
-			JPanel columnPanel = new JPanel();
-			columnPanel.setBorder(new TitledBorder(null, columnDescription, TitledBorder.LEADING, TitledBorder.TOP, null, null));
-			columnsFilterPanel.add(columnPanel);
+			JPanel variablePanel = new JPanel();
+			variablePanel.setBorder(new TitledBorder(null, variable, TitledBorder.LEADING, TitledBorder.TOP, null, null));
+			variablesFilterPanel.add(variablePanel);
 
-			double min = graphFilter.getMinimumOfColumn(column);
-			double max = graphFilter.getMaximumOfColumn(column);
+			double min = graphFilter.getMinimumOfVariable(variable);
+			double max = graphFilter.getMaximumOfVariable(variable);
 
 			JLabel lowLimitLabel = new JLabel(Double.toString(min));
-			minimumColumnLabelMap.put(column, lowLimitLabel);
-			columnPanel.add(lowLimitLabel);
+			minimumVariableLabelMap.put(variable, lowLimitLabel);
+			variablePanel.add(lowLimitLabel);
 
 			RangeSlider rangeSlider = new RangeSlider();
 			rangeSlider.setUpperValue(100);
-			columnPanel.add(rangeSlider);
+			variablePanel.add(rangeSlider);
 
 			JLabel highLimitLabel = new JLabel(Double.toString(max));
-			maximumColumnLabelMap.put(column, highLimitLabel);
-			columnPanel.add(highLimitLabel);
+			maximumVariableLabelMap.put(variable, highLimitLabel);
+			variablePanel.add(highLimitLabel);
 
 			rangeSlider.addChangeListener(new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
 					RangeSlider slider = (RangeSlider) e.getSource();
-					double lowValue = graphFilter.getColumnAdaptedValue(column, slider.getValue());
-					double highValue = graphFilter.getColumnAdaptedValue(column, slider.getUpperValue());
+					double lowValue = graphFilter.getVariableAdaptedValue(variable, slider.getValue());
+					double highValue = graphFilter.getVariableAdaptedValue(variable, slider.getUpperValue());
 					lowLimitLabel.setText(String.format(Locale.ROOT, "%.2f", lowValue));
 					highLimitLabel.setText(String.format(Locale.ROOT, "%.2f", highValue));
 					if (slider.getValueIsAdjusting())
 						return;
 					if (GraphResultsGUI.this.isVisible()) {
-						updateGraphFiltering(column, lowValue, highValue);
+						updateGraphFiltering(variable, lowValue, highValue);
 					}
 				}
 			});
@@ -702,18 +674,17 @@ public class GraphResultsGUI extends JFrame {
 	}
 
 	private void addVisibleGraphsToPanel() {
-		if (!visibleGraphs.isEmpty()) { // had graphs previously
-			System.out.println("hummmmmmmmmmmmmmm?");
-		}
-
 		HashSet<GraphData> newVisibleGraphs = new HashSet<>();
+		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 
-		for (GraphData gd : graphFilter.getVisibleGraphList()) {
+		for (GraphData gd : visibleGraphList) {
 			DefaultView dv = gd.getDefaultView();
+			// graph is added to panel here
 			graphPanel.add(dv);
 			newVisibleGraphs.add(gd);
 		}
 
+		// this code is used to enable/disable auto layout for added/removed graphs
 		HashSet<GraphData> addedGraphs = whatGotAdded(visibleGraphs, newVisibleGraphs);
 		HashSet<GraphData> removedGraphs = whatGotRemoved(visibleGraphs, newVisibleGraphs);
 		addedGraphs.parallelStream().forEach(gd -> {
@@ -753,21 +724,21 @@ public class GraphResultsGUI extends JFrame {
 
 	private void layoutGraphPanel() {
 		int nVisibleG = graphFilter.getVisibleGraphList().size();
-		if (nVisibleG < graphsPerColumn) {
-			graphsPerColumn = nVisibleG;
+		if (nVisibleG < graphsPerVariable) {
+			graphsPerVariable = nVisibleG;
 		}
-		if (graphsPerColumn > 0) {
+		if (graphsPerVariable > 0) {
 			int panelWidth = scrollPane.getViewport().getWidth();
-			this.graphSize = panelWidth / graphsPerColumn - 2;
+			this.graphSize = panelWidth / graphsPerVariable - 2;
 			updateGraphsSize();
 			GridLayout layout = (GridLayout) graphPanel.getLayout();
-			layout.setColumns(graphsPerColumn);
+			layout.setColumns(graphsPerVariable);
 			layout.setRows(0);
-			numColumnsLabel.setText(Integer.toString(graphsPerColumn));
+			numVariablesLabel.setText(Integer.toString(graphsPerVariable));
 		}
 		graphPanel.revalidate();
 		graphPanel.repaint();
-		// numGraphsSlider.setValue(graphsPerColumn);
+		// numGraphsSlider.setValue(graphsPerVariable);
 	}
 
 	private void updateGraphsSize() {
@@ -787,8 +758,8 @@ public class GraphResultsGUI extends JFrame {
 		});
 	}
 
-	private void updateGraphsColumnControl(JSlider source) {
-		graphsPerColumn = source.getValue();
+	private void updateGraphsVariableControl(JSlider source) {
+		graphsPerVariable = source.getValue();
 		layoutGraphPanel();
 	}
 
@@ -845,15 +816,14 @@ public class GraphResultsGUI extends JFrame {
 	}
 
 	private void sortGraphs() {
-		String columnName = (String) sortingColumnBox.getSelectedItem();
+		String variable = (String) sortingVariableBox.getSelectedItem();
 		String directionText = (String) sortingDirectionBox.getSelectedItem();
 		if (directionText.equals("ascending")) {
 			graphFilter.setSortAscending(true);
 		} else {
 			graphFilter.setSortAscending(false);
 		}
-		String columnId = graphFilter.getColumnIdFromDescription(columnName);
-		graphFilter.operatorSortGraphs(columnId);
+		graphFilter.operatorSortGraphs(variable);
 		graphPanel.removeAll();
 		addVisibleGraphsToPanel();
 		layoutGraphPanel();
@@ -874,8 +844,8 @@ public class GraphResultsGUI extends JFrame {
 		graphPanel.repaint();
 	}
 
-	private void updateGraphFiltering(String column, double lowValue, double highValue) {
-		graphFilter.setGraphFilter(column, lowValue, highValue);
+	private void updateGraphFiltering(String variable, double lowValue, double highValue) {
+		graphFilter.setGraphFilter(variable, lowValue, highValue);
 		graphFilter.operatorFilterGraphs();
 		graphPanel.removeAll();
 		addVisibleGraphsToPanel();

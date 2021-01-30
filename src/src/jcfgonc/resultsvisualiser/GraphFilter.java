@@ -4,9 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,8 +20,6 @@ import javax.swing.border.LineBorder;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import structures.GlobalFileWriter;
-import structures.TypeMap;
 
 public class GraphFilter {
 	private HashMap<String, GraphData> graphMap;
@@ -56,14 +52,11 @@ public class GraphFilter {
 	 * global status of the shift key
 	 */
 	private MutableBoolean shiftKeyPressed;
-	private Object2DoubleOpenHashMap<String> minimumOfColumn;
-	private Object2DoubleOpenHashMap<String> maximumOfColumn;
-	private Object2DoubleOpenHashMap<String> lowHighColumnDifference;
-	private Object2DoubleOpenHashMap<String> columnFilterLow;
-	private Object2DoubleOpenHashMap<String> columnFilterHigh;
-	private TypeMap columnsTypes;
-	private HashMap<String, String> columnKey2Description;
-	private HashMap<String, String> columnDescription2Key;
+	private Object2DoubleOpenHashMap<String> minimumOfVariable;
+	private Object2DoubleOpenHashMap<String> maximumOfVariable;
+	private Object2DoubleOpenHashMap<String> lowHighVariableDifference;
+	private Object2DoubleOpenHashMap<String> variableFilterLow;
+	private Object2DoubleOpenHashMap<String> variableFilterHigh;
 
 	public GraphFilter(String graphDatafile, int numberShownGraphs, MutableBoolean shiftKeyPressed) throws IOException {
 		this.graphMap = new HashMap<>();
@@ -72,19 +65,14 @@ public class GraphFilter {
 		this.selectedGraphs = new HashSet<>();
 		this.deletedGraphs = new HashSet<GraphData>();
 		this.shiftSelectedGraphs = new HashSet<>();
-		this.minimumOfColumn = new Object2DoubleOpenHashMap<>();
-		this.maximumOfColumn = new Object2DoubleOpenHashMap<>();
-		this.lowHighColumnDifference = new Object2DoubleOpenHashMap<>();
-		this.columnFilterLow = new Object2DoubleOpenHashMap<>();
-		this.columnFilterHigh = new Object2DoubleOpenHashMap<>();
-		this.columnsTypes = new TypeMap();
-		columnsTypes.loadFromTextFile(new File("config" + File.separator + "columnsTypes.txt"));
-		this.columnKey2Description = new HashMap<>();
-		this.columnDescription2Key = new HashMap<>();
-		loadColumnsDescriptions(new File("config" + File.separator + "columnsDescriptions.txt"));
+		this.minimumOfVariable = new Object2DoubleOpenHashMap<>();
+		this.maximumOfVariable = new Object2DoubleOpenHashMap<>();
+		this.lowHighVariableDifference = new Object2DoubleOpenHashMap<>();
+		this.variableFilterLow = new Object2DoubleOpenHashMap<>();
+		this.variableFilterHigh = new Object2DoubleOpenHashMap<>();
 
 		System.out.println("loading " + graphDatafile);
-//		this.originalGraphList = GraphData.createGraphsFromCSV("\t", new File(graphDatafile), true, columnKey2Description, true);
+		this.originalGraphList = GraphDataRead.readTSV(graphDatafile);
 		System.out.format("%d graphs loaded\n", originalGraphList.size());
 
 		System.out.format("adding MouseClickHandler\n");
@@ -102,39 +90,6 @@ public class GraphFilter {
 		setNumberVisibleGraphs(numberShownGraphs);
 
 		System.out.format("GraphFilter() done\n");
-
-	}
-
-	/**
-	 * Internally type is stored as an int value reflecting the constants defined in TypeMap
-	 * 
-	 * @return
-	 */
-	public TypeMap getColumnTypeMap() {
-		return columnsTypes;
-	}
-
-	public String getColumnIdFromDescription(String description) {
-		return columnDescription2Key.get(description);
-	}
-
-	public String getColumnDescription(String id) {
-		return columnKey2Description.get(id);
-	}
-
-	private void loadColumnsDescriptions(File filename) throws IOException {
-		BufferedReader reader = new BufferedReader(new FileReader(filename));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			String[] tokens = line.split("[\t]+", 2);
-			if (tokens.length != 2)
-				continue;
-			String id = tokens[0];
-			String description = tokens[1];
-			columnKey2Description.put(id, description);
-			columnDescription2Key.put(description, id);
-		}
-		reader.close();
 	}
 
 	private void addMouseClickHandler(GraphData gd) {
@@ -283,18 +238,20 @@ public class GraphFilter {
 	}
 
 	public void operatorFilterGraphs() {
-		if (columnFilterLow.isEmpty() && columnFilterHigh.isEmpty())
+		if (variableFilterLow.isEmpty() && variableFilterHigh.isEmpty())
 			return;
 		graphList.clear();
+		// for each graphdata...
 		outer: for (GraphData gd : originalGraphList) {
 			if (deletedGraphs.contains(gd))
 				continue;
-			for (String column : columnFilterLow.keySet()) {
-				double val = Double.parseDouble(gd.getDetails(column));
-				final double tol = 0.001;
-				double low = columnFilterLow.getDouble(column);
-				double high = columnFilterHigh.getDouble(column);
-				boolean check = val >= low - tol && val <= high + tol;
+			// ...check if each variable is within range
+			for (String variable : variableFilterLow.keySet()) {
+				double value = gd.getNumericVariable(variable);
+				final double tol = 0.0001;
+				double low = variableFilterLow.getDouble(variable);
+				double high = variableFilterHigh.getDouble(variable);
+				boolean check = value >= low - tol && value <= high + tol;
 				if (!check)
 					continue outer;
 			}
@@ -306,28 +263,27 @@ public class GraphFilter {
 		currentlyClickedGD = null;
 	}
 
-	public void setGraphFilter(String column, double lowValue, double highValue) {
-		columnFilterLow.put(column, lowValue);
-		columnFilterHigh.put(column, highValue);
+	public void setGraphFilter(String variable, double lowValue, double highValue) {
+		variableFilterLow.put(variable, lowValue);
+		variableFilterHigh.put(variable, highValue);
 	}
 
-	public void operatorSortGraphs(String columnName) {
+	public void operatorSortGraphs(String variableName) {
+		GraphData gd0 = originalGraphList.get(0);
 		// sort the full list and then copy to the visible list
 		graphList.sort(new Comparator<GraphData>() {
 
 			@Override
 			public int compare(GraphData o1, GraphData o2) {
-				String d1 = o1.getDetails(columnName);
-				String d2 = o2.getDetails(columnName);
 				int comp = 0;
-				if (columnsTypes.isTypeNumeric(columnName)) {
-					double v1 = Double.parseDouble(d1);
-					double v2 = Double.parseDouble(d2);
+				if (gd0.isVariableNumeric(variableName)) {
+					double v1 = o1.getNumericVariable(variableName);
+					double v2 = o2.getNumericVariable(variableName);
 					comp = Double.compare(v1, v2);
-				} else if (columnsTypes.isTypeString(columnName)) {
-					comp = d1.compareTo(d2);
+				} else if (gd0.isVariableString(variableName)) {
+					comp = o1.getStringProperty(variableName).compareTo(o2.getStringProperty(variableName));
 				} else {
-					System.err.println("unknown type for column " + columnName);
+					System.err.println("unknown type for variable " + variableName);
 					System.exit(-2);
 				}
 				if (sortAscending) {
@@ -435,38 +391,18 @@ public class GraphFilter {
 		saveGraphsSingleCSV(graphList, "filtered", "Saving filtered graphs", parentComponent);
 	}
 
+	@SuppressWarnings("unused")
 	private void saveGraphsSingleCSV(Collection<GraphData> graphs, String suggestion, String title, Component parentComponent) {
 		if (graphs.isEmpty()) {
 			JOptionPane.showMessageDialog(parentComponent, "Nothing to save");
 			return;
 		}
 
-		GlobalFileWriter.setExtension(".csv");
+		// TODO
 		String filename = (String) JOptionPane.showInputDialog(parentComponent, "Type the filename", title, JOptionPane.PLAIN_MESSAGE, null, null,
 				suggestion);
-		if (filename == null || filename.trim().isEmpty()) {
-			GlobalFileWriter.createNewFile();
-		} else {
-			GlobalFileWriter.createNewFile(filename);
-		}
-
-		GlobalFileWriter.writeLine(
-				"n:time\tn:relationTypes\tn:relationTypesStd\tn:cycles\tn:patternEdges\tn:patternVertices\tn:matches\ts:query\ts:pattern\ts:conceptVarMap\ts:hash");
 		for (GraphData gd : graphs) {
-			String line = gd.getDetails("n:time") + //
-					"\t" + gd.getDetails("n:relationTypes") + //
-					"\t" + gd.getDetails("n:relationTypesStd") + //
-					"\t" + gd.getDetails("n:cycles") + //
-					"\t" + gd.getDetails("n:patternEdges") + //
-					"\t" + gd.getDetails("n:patternVertices") + //
-					"\t" + gd.getDetails("n:matches") + //
-					"\t" + gd.getDetails("s:query") + //
-					"\t" + gd.getDetails("s:pattern") + //
-					"\t" + gd.getDetails("s:conceptVarMap") + //
-					"\t" + gd.getDetails("s:hash");
-			GlobalFileWriter.writeLineUnsync(line);
 		}
-		GlobalFileWriter.close();
 	}
 
 	@SuppressWarnings("unused")
@@ -500,47 +436,57 @@ public class GraphFilter {
 		}
 	}
 
-	public double getMinimumOfColumn(String column) {
-		if (minimumOfColumn.containsKey(column))
-			return minimumOfColumn.getDouble(column);
+	public double getMinimumOfVariable(String variable) {
+		if (minimumOfVariable.containsKey(variable))
+			return minimumOfVariable.getDouble(variable);
 
-		double minimum = graphList.parallelStream().mapToDouble(graph -> Double.parseDouble(graph.getDetails(column)))//
-				.min().getAsDouble();
+		double minimum = Double.MAX_VALUE;
+		for (GraphData graph : graphList) {
+			double val = graph.getNumericVariable(variable);
+			if (val < minimum) {
+				minimum = val;
+			}
+		}
 
-		minimumOfColumn.put(column, minimum);
+		minimumOfVariable.put(variable, minimum);
 		return minimum;
 	}
 
-	public double getMaximumOfColumn(final String column) {
-		if (maximumOfColumn.containsKey(column))
-			return maximumOfColumn.getDouble(column);
+	public double getMaximumOfVariable(final String variable) {
+		if (maximumOfVariable.containsKey(variable))
+			return maximumOfVariable.getDouble(variable);
 
-		double maximum = graphList.parallelStream().mapToDouble(graph -> Double.parseDouble(graph.getDetails(column)))//
-				.max().getAsDouble();
+		double maximum = -Double.MAX_VALUE;
+		for (GraphData graph : graphList) {
+			double val = graph.getNumericVariable(variable);
+			if (val > maximum) {
+				maximum = val;
+			}
+		}
 
-		maximumOfColumn.put(column, maximum);
+		maximumOfVariable.put(variable, maximum);
 		return maximum;
 	}
 
 	/**
-	 * adapts the given value (must go from 0 to 100 (inclusive)) to be between the column's low and high range
+	 * adapts the given value (must go from 0 to 100 (inclusive)) to be between the variable's low and high range
 	 * 
-	 * @param column
+	 * @param variable
 	 * @param value
 	 * @return
 	 */
-	public double getColumnAdaptedValue(String column, int value) {
-		double low = getMinimumOfColumn(column);
+	public double getVariableAdaptedValue(String variable, int value) {
+		double low = getMinimumOfVariable(variable);
 		double range;
-		lowHighColumnDifference = new Object2DoubleOpenHashMap<>();
-		if (!lowHighColumnDifference.containsKey(column)) {
-			double high = getMaximumOfColumn(column);
+		lowHighVariableDifference = new Object2DoubleOpenHashMap<>();
+		if (!lowHighVariableDifference.containsKey(variable)) {
+			double high = getMaximumOfVariable(variable);
 			range = high - low;
-			lowHighColumnDifference.put(column, range);
+			lowHighVariableDifference.put(variable, range);
 		} else {
-			range = lowHighColumnDifference.getDouble(column);
+			range = lowHighVariableDifference.getDouble(variable);
 		}
-		// double range=lowHighColumnDifference.g
+		// double range=lowHighVariableDifference.g
 		double res = low + (value / 100.0) * range;
 		return res;
 	}

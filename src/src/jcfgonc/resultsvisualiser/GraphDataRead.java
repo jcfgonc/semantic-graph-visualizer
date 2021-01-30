@@ -23,13 +23,13 @@ import utils.VariousUtils;
  */
 public class GraphDataRead {
 
-	public static void readTSV(String filename) throws IOException {
+	public static ArrayList<GraphData> readTSV(String filename) throws IOException {
 		System.out.print("loading " + filename + " ...");
 		Ticker t = new Ticker();
 		ArrayList<GraphData> graphs = new ArrayList<>(1 << 16);
 		NonblockingBufferedReader br = new NonblockingBufferedReader(filename);
 		HashMap<String, DataType> variableTypes = null;
-		DualHashBidiMap<String, Integer> variable2columnId = null;
+		DualHashBidiMap<String, Integer> variable2columnNumber = null;
 		// the first graph cell that shows up will be the main one (to be compatible with the pattern miner's output)
 		String graphVariable = null;
 		boolean headerRead = false;
@@ -40,10 +40,10 @@ public class GraphDataRead {
 			if (!headerRead) {
 				headerRead = true;
 				variableTypes = createDataTypes(tokens);
-				variable2columnId = createVariableIds(tokens);
+				variable2columnNumber = createVariableIds(tokens);
 				graphVariable = getGraphVariable(tokens);
 			} else {
-				GraphData gd = createGraphData(rowNumber, tokens, variableTypes, variable2columnId, graphVariable);
+				GraphData gd = createGraphData(rowNumber, tokens, variableTypes, variable2columnNumber, graphVariable);
 				graphs.add(gd);
 				rowNumber++;
 			}
@@ -51,20 +51,23 @@ public class GraphDataRead {
 		// no more data to read
 		br.close();
 		System.out.println("done. Took " + t.getElapsedTime() + " seconds.");
+		return graphs;
 	}
 
 	private static GraphData createGraphData(int rowNumber, String[] cells, HashMap<String, DataType> variableTypes,
-			DualHashBidiMap<String, Integer> variable2columnId, String graphVariable) throws NoSuchFileException, IOException {
+			DualHashBidiMap<String, Integer> variable2columnNumber, String graphVariable) throws NoSuchFileException, IOException {
 		// store the graph itself
-		String graph_str = cells[variable2columnId.get(graphVariable)];
+		String graph_str = cells[variable2columnNumber.get(graphVariable)];
 		StringGraph graph = GraphReadWrite.readCSVFromString(graph_str);
 		// create class to hold data
 		GraphData gd = new GraphData(Integer.toString(rowNumber), graph);
+		gd.setVariable2ColumnNumber(variable2columnNumber);
+		gd.setVariableTypes(variableTypes);
 		// add remaining variables/properties
-		Set<String> variables = variable2columnId.keySet();
+		Set<String> variables = variable2columnNumber.keySet();
 		for (String variable : variables) {
 			DataType vartype = variableTypes.get(variable);
-			int varId = variable2columnId.get(variable).intValue();
+			int varId = variable2columnNumber.get(variable).intValue();
 			String value = cells[varId];
 			switch (vartype) {
 			case GRAPH: {
