@@ -25,6 +25,7 @@ import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 
 import javax.swing.BoxLayout;
@@ -41,6 +42,7 @@ import javax.swing.JSeparator;
 import javax.swing.JSlider;
 import javax.swing.JSplitPane;
 import javax.swing.KeyStroke;
+import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
@@ -62,7 +64,7 @@ public class GraphResultsGUI extends JFrame {
 	private static final int FONT_SIZE_MINIMUM = 8;
 	private static final int FONT_SIZE_DEFAULT = 18;
 	private static final int FONT_SIZE_MAXIMUM = 48;
-	private static final String graphDatafile = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-01-26_04-16-50.tsv";
+	private static final String graphDatafile = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-02-05_02-31-46_sym.tsv";
 	private static final int NODE_SIZE_MINIMUM = 0;
 	private static final int NODE_SIZE_DEFAULT = 24;
 	private static final int NODE_SIZE_MAXIMUM = 100;
@@ -149,6 +151,7 @@ public class GraphResultsGUI extends JFrame {
 	private JMenuItem stopLayoutMenuItem;
 	private JMenuItem restartLayoutMenuItem;
 	private HashSet<GraphData> visibleGraphs;
+	private JMenuItem stopAllLayoutMenuItem;
 
 	/**
 	 * Create the frame.
@@ -456,21 +459,29 @@ public class GraphResultsGUI extends JFrame {
 		mnView = new JMenu("View");
 		menuBar.add(mnView);
 
-		restartLayoutMenuItem = new JMenuItem("Restart Layout");
+		restartLayoutMenuItem = new JMenuItem("Restart graph(s) layout");
 		restartLayoutMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				restartGraphsLayout();
+				restartGraphsLayoutVisible();
 			}
 		});
 		mnView.add(restartLayoutMenuItem);
 
-		stopLayoutMenuItem = new JMenuItem("Stop Layout");
+		stopLayoutMenuItem = new JMenuItem("Stop graph(s) layout");
 		stopLayoutMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				stopGraphsLayout();
+				stopGraphsLayoutVisible();
 			}
 		});
 		mnView.add(stopLayoutMenuItem);
+
+		stopAllLayoutMenuItem = new JMenuItem("Stop graph(s) layout (including hidden graphs)");
+		stopAllLayoutMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				stopGraphsLayoutAll();
+			}
+		});
+		mnView.add(stopAllLayoutMenuItem);
 
 		mnTools = new JMenu("Debug");
 		menuBar.add(mnTools);
@@ -503,8 +514,8 @@ public class GraphResultsGUI extends JFrame {
 		mnTools.add(debugDeletedMenuItem);
 	}
 
-	private void restartGraphsLayout() {
-		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+	private void restartGraphsLayoutVisible() {
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 		visibleGraphList.parallelStream().forEach(gd -> {
 			Viewer viewer = gd.getViewer();
 			viewer.disableAutoLayout();
@@ -512,23 +523,22 @@ public class GraphResultsGUI extends JFrame {
 		});
 	}
 
-	private void stopGraphsLayout() {
-		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+	private void stopGraphsLayoutVisible() {
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+		if (visibleGraphList.isEmpty())
+			return;
 		visibleGraphList.parallelStream().forEach(gd -> {
 			Viewer viewer = gd.getViewer();
 			viewer.disableAutoLayout();
 		});
 	}
 
-	private void restoreDeletedGraphs() {
-		graphFilter.operatorRestoreDeletedGraphs();
-		graphPanel.removeAll();
-		addVisibleGraphsToPanel();
-		layoutGraphPanel();
-		updateFontsSize();
-		updateNodesSize();
-		graphPanel.revalidate();
-		graphPanel.repaint();
+	private void stopGraphsLayoutAll() {
+		List<GraphData> graphs = graphFilter.getFullGraphList();
+		graphs.parallelStream().forEach(gd -> {
+			Viewer viewer = gd.getViewer();
+			viewer.disableAutoLayout();
+		});
 	}
 
 	private void quit() {
@@ -559,6 +569,9 @@ public class GraphResultsGUI extends JFrame {
 	protected void initializeTheRest() throws NoSuchFileException, IOException {
 		double w = 640 * OSTools.getScreenScale();
 		double h = 480 * OSTools.getScreenScale();
+		ToolTipManager ttm = ToolTipManager.sharedInstance();
+		ttm.setInitialDelay(250);
+		ttm.setDismissDelay(3600 * 1000);
 		handleKeyEvents();
 		graphFilter = new GraphFilter(graphDatafile, NUMBER_VISIBLE_GRAPHS_DEFAULT, shiftKeyPressed);
 		setSize(new Dimension((int) w, (int) h));
@@ -675,7 +688,7 @@ public class GraphResultsGUI extends JFrame {
 
 	private void addVisibleGraphsToPanel() {
 		HashSet<GraphData> newVisibleGraphs = new HashSet<>();
-		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 
 		for (GraphData gd : visibleGraphList) {
 			DefaultView dv = gd.getDefaultView();
@@ -722,6 +735,11 @@ public class GraphResultsGUI extends JFrame {
 		return added;
 	}
 
+	private void updateGraphsVariableControl(JSlider source) {
+		graphsPerVariable = source.getValue();
+		layoutGraphPanel();
+	}
+
 	private void layoutGraphPanel() {
 		int nVisibleG = graphFilter.getVisibleGraphList().size();
 		if (nVisibleG < graphsPerVariable) {
@@ -749,39 +767,19 @@ public class GraphResultsGUI extends JFrame {
 		}
 	}
 
+	private void updateGraphFontsSizeControl(JSlider source) {
+		graphFontSize = source.getValue();
+		fontSizeLabel.setText(Integer.toString(graphFontSize));
+		updateFontsSize();
+	}
+
 	private void updateFontsSize() {
-		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 		visibleGraphList.parallelStream().forEach(gd -> {
 			MultiGraph graph = gd.getMultiGraph();
 			String style = String.format("edge { text-size: %d; } node { text-size: %d; }", graphFontSize, graphFontSize);
 			graph.addAttribute("ui.stylesheet", style);
 		});
-	}
-
-	private void updateGraphsVariableControl(JSlider source) {
-		graphsPerVariable = source.getValue();
-		layoutGraphPanel();
-	}
-
-	private void updateNumberVisibleGraphsControl(JSlider source) {
-		numGraphsLabel.setText(Integer.toString(source.getValue()));
-		if (source.getValueIsAdjusting())
-			return;
-		graphFilter.setNumberVisibleGraphs(source.getValue());
-		// --
-		graphPanel.removeAll();
-		addVisibleGraphsToPanel();
-		layoutGraphPanel();
-		updateFontsSize();
-		updateNodesSize();
-		graphPanel.revalidate();
-		graphPanel.repaint();
-	}
-
-	private void updateGraphFontsSizeControl(JSlider source) {
-		graphFontSize = source.getValue();
-		fontSizeLabel.setText(Integer.toString(graphFontSize));
-		updateFontsSize();
 	}
 
 	private void updateNodeSizeControl(JSlider source) {
@@ -791,7 +789,7 @@ public class GraphResultsGUI extends JFrame {
 	}
 
 	private void updateNodesSize() {
-		ArrayList<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 		visibleGraphList.parallelStream().forEach(gd -> {
 			MultiGraph graph = gd.getMultiGraph();
 			String style;
@@ -804,9 +802,38 @@ public class GraphResultsGUI extends JFrame {
 		});
 	}
 
+	private void updateNumberVisibleGraphsControl(JSlider source) {
+		numGraphsLabel.setText(Integer.toString(source.getValue()));
+		if (source.getValueIsAdjusting())
+			return;
+		graphFilter.setNumberVisibleGraphs(source.getValue());
+		// --
+		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
+		addVisibleGraphsToPanel();
+		layoutGraphPanel();
+		updateFontsSize();
+		updateNodesSize();
+		graphPanel.revalidate();
+		graphPanel.repaint();
+	}
+
+	private void restoreDeletedGraphs() {
+		graphFilter.operatorRestoreDeletedGraphs();
+		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
+		addVisibleGraphsToPanel();
+		layoutGraphPanel();
+		updateFontsSize();
+		updateNodesSize();
+		graphPanel.revalidate();
+		graphPanel.repaint();
+	}
+
 	private void cropSelection() {
 		graphFilter.operatorCropSelection();
 		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
 		addVisibleGraphsToPanel();
 		layoutGraphPanel();
 		updateFontsSize();
@@ -818,13 +845,10 @@ public class GraphResultsGUI extends JFrame {
 	private void sortGraphs() {
 		String variable = (String) sortingVariableBox.getSelectedItem();
 		String directionText = (String) sortingDirectionBox.getSelectedItem();
-		if (directionText.equals("ascending")) {
-			graphFilter.setSortAscending(true);
-		} else {
-			graphFilter.setSortAscending(false);
-		}
-		graphFilter.operatorSortGraphs(variable);
+		boolean sortAscending = directionText.equals("ascending");
+		graphFilter.operatorSortGraphs(variable, sortAscending);
 		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
 		addVisibleGraphsToPanel();
 		layoutGraphPanel();
 		updateFontsSize();
@@ -836,6 +860,7 @@ public class GraphResultsGUI extends JFrame {
 	private void deleteSelectedGraphs() {
 		graphFilter.operatorDeleteSelection();
 		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
 		addVisibleGraphsToPanel();
 		layoutGraphPanel();
 		updateFontsSize();
@@ -848,6 +873,7 @@ public class GraphResultsGUI extends JFrame {
 		graphFilter.setGraphFilter(variable, lowValue, highValue);
 		graphFilter.operatorFilterGraphs();
 		graphPanel.removeAll();
+		stopGraphsLayoutVisible();
 		addVisibleGraphsToPanel();
 		layoutGraphPanel();
 		updateFontsSize();

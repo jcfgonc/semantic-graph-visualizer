@@ -8,10 +8,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.swing.JOptionPane;
 import javax.swing.border.EmptyBorder;
@@ -33,8 +35,13 @@ public class GraphFilter {
 	 */
 	private ArrayList<GraphData> graphList;
 	private int numberVisibleGraphs = 0;
-	private boolean sortAscending;
+	/**
+	 * a pointer to the currently clicked graph
+	 */
 	private GraphData currentlyClickedGD;
+	/**
+	 * a pointer to the last clicked graph
+	 */
 	private GraphData lastClickedGD;
 	/**
 	 * graphs which are currently selected (and highlighted)
@@ -52,7 +59,13 @@ public class GraphFilter {
 	 * global status of the shift key
 	 */
 	private MutableBoolean shiftKeyPressed;
+	/**
+	 * maps the minimum (for all the loaded graphs) of a variable to its name
+	 */
 	private Object2DoubleOpenHashMap<String> minimumOfVariable;
+	/**
+	 * maps the maximum (for all the loaded graphs) of a variable to its name
+	 */
 	private Object2DoubleOpenHashMap<String> maximumOfVariable;
 	private Object2DoubleOpenHashMap<String> lowHighVariableDifference;
 	private Object2DoubleOpenHashMap<String> variableFilterLow;
@@ -177,12 +190,21 @@ public class GraphFilter {
 	}
 
 	/**
-	 * returns the visible graph list
+	 * returns the visible graph list SAFE
 	 * 
 	 * @return
 	 */
-	public ArrayList<GraphData> getVisibleGraphList() {
-		return visibleGraphList;
+	public List<GraphData> getVisibleGraphList() {
+		return Collections.unmodifiableList(visibleGraphList);
+	}
+
+	/**
+	 * returns the list of all loaded graphs SAFE
+	 * 
+	 * @return
+	 */
+	public List<GraphData> getFullGraphList() {
+		return Collections.unmodifiableList(originalGraphList);
 	}
 
 	/**
@@ -192,10 +214,6 @@ public class GraphFilter {
 	 */
 	public boolean hasVisibleGraphs() {
 		return !visibleGraphList.isEmpty();
-	}
-
-	public void setSortAscending(boolean b) {
-		this.sortAscending = b;
 	}
 
 	/**
@@ -268,19 +286,18 @@ public class GraphFilter {
 		variableFilterHigh.put(variable, highValue);
 	}
 
-	public void operatorSortGraphs(String variableName) {
-		GraphData gd0 = originalGraphList.get(0);
+	public void operatorSortGraphs(String variableName, boolean sortAscending) {
 		// sort the full list and then copy to the visible list
 		graphList.sort(new Comparator<GraphData>() {
 
 			@Override
 			public int compare(GraphData o1, GraphData o2) {
 				int comp = 0;
-				if (gd0.isVariableNumeric(variableName)) {
+				if (o1.isVariableNumeric(variableName)) {
 					double v1 = o1.getNumericVariable(variableName);
 					double v2 = o2.getNumericVariable(variableName);
 					comp = Double.compare(v1, v2);
-				} else if (gd0.isVariableString(variableName)) {
+				} else if (o1.isVariableString(variableName)) {
 					comp = o1.getStringProperty(variableName).compareTo(o2.getStringProperty(variableName));
 				} else {
 					System.err.println("unknown type for variable " + variableName);

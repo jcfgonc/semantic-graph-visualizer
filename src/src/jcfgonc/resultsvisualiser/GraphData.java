@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
@@ -48,6 +49,7 @@ public class GraphData {
 	private HashMap<String, String> stringProperties;
 	private DualHashBidiMap<String, Integer> variable2columnNumber;
 	private HashMap<String, DataType> variableTypes;
+	private static final DecimalFormat df = new DecimalFormat("#.######");
 
 	public GraphData(String id, StringGraph graph) {
 		this.id = id;
@@ -188,7 +190,7 @@ public class GraphData {
 				value = Integer.toString(integerProperties.getInt(var));
 				break;
 			case DOUBLE:
-				value = Double.toString(doubleProperties.getDouble(var));
+				value = df.format(doubleProperties.getDouble(var)); 
 				break;
 			case STRING:
 				value = stringProperties.get(var);
