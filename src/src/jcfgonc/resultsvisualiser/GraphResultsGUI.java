@@ -53,7 +53,7 @@ import javax.swing.event.ChangeListener;
 
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.graphstream.graph.implementations.MultiGraph;
-import org.graphstream.ui.swingViewer.DefaultView;
+import org.graphstream.ui.swing_viewer.DefaultView;
 import org.graphstream.ui.view.Viewer;
 
 import slider.RangeSlider;
@@ -82,7 +82,9 @@ public class GraphResultsGUI extends JFrame {
 	 * @throws NoSuchFileException
 	 */
 	public static void main(String[] args) throws NoSuchFileException, IOException {
-		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+//		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		System.setProperty("org.graphstream.ui", "org.graphstream.ui.swingViewer.util.SwingDisplay");
+
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -272,12 +274,12 @@ public class GraphResultsGUI extends JFrame {
 		nodeSizePanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(255, 255, 255), new Color(160, 160, 160)),
 				"Node Size", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 
-		nodeSizeSlider = new JSlider(NODE_SIZE_MINIMUM, NODE_SIZE_MAXIMUM, NODE_SIZE_DEFAULT);
+		nodeSizeSlider = new JSlider(NODE_SIZE_MINIMUM, NODE_SIZE_MAXIMUM, graphNodeSize);
 		nodeSizeSlider.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if (e.getClickCount() == 2) {
-					nodeSizeSlider.setValue(NODE_SIZE_DEFAULT);
+					nodeSizeSlider.setValue(graphNodeSize);
 				}
 			}
 		});
@@ -523,6 +525,9 @@ public class GraphResultsGUI extends JFrame {
 		});
 	}
 
+	/**
+	 * stops the graph layout for graphFilter.getVisibleGraphList()
+	 */
 	private void stopGraphsLayoutVisible() {
 		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 		if (visibleGraphList.isEmpty())
@@ -554,12 +559,12 @@ public class GraphResultsGUI extends JFrame {
 		if (!isVisible()) {
 			return;
 		}
-//		for (GraphData gd : graphFilter.getVisibleGraphList()) {
-//			DefaultView defaultView = gd.getDefaultView();
-//			boolean isVisible = !defaultView.getVisibleRect().isEmpty();
-//			defaultView.setEnabled(isVisible);
-//			defaultView.setVisible(isVisible);
-//		}
+		for (GraphData gd : graphFilter.getVisibleGraphList()) {
+			DefaultView defaultView = gd.getDefaultView();
+			boolean isVisible = !defaultView.getVisibleRect().isEmpty();
+			defaultView.setEnabled(isVisible);
+			defaultView.setVisible(isVisible);
+		}
 	}
 
 	private void windowResized() {
@@ -576,7 +581,7 @@ public class GraphResultsGUI extends JFrame {
 		graphFilter = new GraphFilter(graphDatafile, NUMBER_VISIBLE_GRAPHS_DEFAULT, shiftKeyPressed);
 		setSize(new Dimension((int) w, (int) h));
 		visibleGraphs = new HashSet<GraphData>();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -686,7 +691,7 @@ public class GraphResultsGUI extends JFrame {
 		graphFilter.operatorClearSelection();
 	}
 
-	private void addVisibleGraphsToPanel() {
+	private void updatePanelVisibleGraphs() {
 		HashSet<GraphData> newVisibleGraphs = new HashSet<>();
 		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
 
@@ -698,13 +703,17 @@ public class GraphResultsGUI extends JFrame {
 		}
 
 		// this code is used to enable/disable auto layout for added/removed graphs
-		HashSet<GraphData> addedGraphs = whatGotAdded(visibleGraphs, newVisibleGraphs);
-		HashSet<GraphData> removedGraphs = whatGotRemoved(visibleGraphs, newVisibleGraphs);
+		HashSet<GraphData> addedGraphs = calculateAddedGraphs(visibleGraphs, newVisibleGraphs);
+		HashSet<GraphData> removedGraphs = calculateRemovedGraphs(visibleGraphs, newVisibleGraphs);
 		addedGraphs.parallelStream().forEach(gd -> {
 			gd.getViewer().enableAutoLayout();
+			gd.getDefaultView().setEnabled(true);
+			gd.getDefaultView().setVisible(true);
 		});
 		removedGraphs.parallelStream().forEach(gd -> {
 			gd.getViewer().disableAutoLayout();
+			gd.getDefaultView().setEnabled(false);
+			gd.getDefaultView().setVisible(false);
 		});
 //		System.out.format("addedGraphs: %s\n", addedGraphs);
 //		System.out.format("removedGraphs: %s\n", removedGraphs);
@@ -713,7 +722,7 @@ public class GraphResultsGUI extends JFrame {
 		updateGraphsSize();
 	}
 
-	private <T> HashSet<T> whatGotRemoved(HashSet<T> oldSet, HashSet<T> newSet) {
+	private <T> HashSet<T> calculateRemovedGraphs(HashSet<T> oldSet, HashSet<T> newSet) {
 		// what's in old which aint in new
 		HashSet<T> removed = new HashSet<>();
 		for (T element : oldSet) {
@@ -724,7 +733,7 @@ public class GraphResultsGUI extends JFrame {
 		return removed;
 	}
 
-	private <T> HashSet<T> whatGotAdded(HashSet<T> oldSet, HashSet<T> newSet) {
+	private <T> HashSet<T> calculateAddedGraphs(HashSet<T> oldSet, HashSet<T> newSet) {
 		// what's in old which aint in new
 		HashSet<T> added = new HashSet<>();
 		for (T element : newSet) {
@@ -778,7 +787,7 @@ public class GraphResultsGUI extends JFrame {
 		visibleGraphList.parallelStream().forEach(gd -> {
 			MultiGraph graph = gd.getMultiGraph();
 			String style = String.format("edge { text-size: %d; } node { text-size: %d; }", graphFontSize, graphFontSize);
-			graph.addAttribute("ui.stylesheet", style);
+			graph.setAttribute("ui.stylesheet", style);
 		});
 	}
 
@@ -798,7 +807,7 @@ public class GraphResultsGUI extends JFrame {
 			} else {
 				style = String.format("node { stroke-mode: plain; size: %dpx; }", graphNodeSize, graphNodeSize);
 			}
-			graph.addAttribute("ui.stylesheet", style);
+			graph.setAttribute("ui.stylesheet", style);
 		});
 	}
 
@@ -807,10 +816,10 @@ public class GraphResultsGUI extends JFrame {
 		if (source.getValueIsAdjusting())
 			return;
 		graphFilter.setNumberVisibleGraphs(source.getValue());
-		// --
+
 		graphPanel.removeAll();
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -820,9 +829,10 @@ public class GraphResultsGUI extends JFrame {
 
 	private void restoreDeletedGraphs() {
 		graphFilter.operatorRestoreDeletedGraphs();
+		
 		graphPanel.removeAll();
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -832,9 +842,10 @@ public class GraphResultsGUI extends JFrame {
 
 	private void cropSelection() {
 		graphFilter.operatorCropSelection();
+		
 		graphPanel.removeAll();
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -847,9 +858,10 @@ public class GraphResultsGUI extends JFrame {
 		String directionText = (String) sortingDirectionBox.getSelectedItem();
 		boolean sortAscending = directionText.equals("ascending");
 		graphFilter.operatorSortGraphs(variable, sortAscending);
+		
 		graphPanel.removeAll();
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -859,9 +871,10 @@ public class GraphResultsGUI extends JFrame {
 
 	private void deleteSelectedGraphs() {
 		graphFilter.operatorDeleteSelection();
-		graphPanel.removeAll();
+		
+		graphPanel.removeAll();		
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();
@@ -872,9 +885,10 @@ public class GraphResultsGUI extends JFrame {
 	private void updateGraphFiltering(String variable, double lowValue, double highValue) {
 		graphFilter.setGraphFilter(variable, lowValue, highValue);
 		graphFilter.operatorFilterGraphs();
+		
 		graphPanel.removeAll();
 		stopGraphsLayoutVisible();
-		addVisibleGraphsToPanel();
+		updatePanelVisibleGraphs();
 		layoutGraphPanel();
 		updateFontsSize();
 		updateNodesSize();

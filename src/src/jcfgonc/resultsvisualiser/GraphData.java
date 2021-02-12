@@ -13,12 +13,15 @@ import javax.swing.border.LineBorder;
 
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.graphstream.graph.implementations.MultiGraph;
+import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.Layouts;
-import org.graphstream.ui.swingViewer.DefaultView;
-import org.graphstream.ui.swingViewer.GraphRenderer;
+import org.graphstream.ui.swing.SwingGraphRenderer;
+import org.graphstream.ui.swing_viewer.DefaultView;
+import org.graphstream.ui.swing_viewer.SwingViewer;
+import org.graphstream.ui.swing_viewer.util.DefaultMouseManager;
 import org.graphstream.ui.view.Viewer;
-import org.graphstream.ui.view.util.DefaultMouseManager;
+import org.graphstream.ui.view.Viewer.ThreadingModel;
 
 import graph.GraphReadWrite;
 import graph.StringGraph;
@@ -82,9 +85,9 @@ public class GraphData {
 		if (!loaded)
 			return;
 		if (isSelected()) {
-			multiGraph.addAttribute("ui.stylesheet", "graph { fill-color: rgba(192,224,255,128); }");
+			multiGraph.setAttribute("ui.stylesheet", "graph { fill-color: rgba(192,224,255,128); }");
 		} else {
-			multiGraph.addAttribute("ui.stylesheet", "graph { fill-color: rgba(192,224,255,0); }");
+			multiGraph.setAttribute("ui.stylesheet", "graph { fill-color: rgba(192,224,255,0); }");
 		}
 	}
 
@@ -110,22 +113,21 @@ public class GraphData {
 
 	private void lazyLoad() {
 		if (!loaded) {
-			this.multiGraph = GraphStreamUtils.initializeGraphStream();
+			this.multiGraph = GraphStreamUtils.initializeGraphStream(this.id);
 			GraphStreamUtils.addEdgesToVisualGraph(multiGraph, stringGraph.edgeSet());
 
-			// viewer = new Viewer(multiGraph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-			viewer = new Viewer(multiGraph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-			GraphRenderer renderer = Viewer.newGraphRenderer();
-//			defaultView = (DefaultView) viewer.addDefaultView(false);
-			defaultView = (DefaultView) viewer.addView(Viewer.DEFAULT_VIEW_ID, renderer, false);
+			viewer = new SwingViewer(multiGraph, ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+			viewer.enableAutoLayout();
+			defaultView = (DefaultView) viewer.addView("graph" + this.id, new SwingGraphRenderer(), false);
+
 			defaultView.setBorder(new LineBorder(Color.BLACK));
 			layout = Layouts.newLayoutAlgorithm();
-			layout.setQuality(1);
-			layout.setForce(0.1);
+//			layout.setQuality(1);
+//			layout.setForce(0.1);
 			viewer.enableAutoLayout(layout);
 
-			// defaultView.setName(id);
 			createToolTipText();
+
 //			defaultView.addComponentListener(new ComponentAdapter() {
 //				@Override
 //				public void componentShown(ComponentEvent e) {
@@ -139,6 +141,8 @@ public class GraphData {
 //					// this is never called
 //				}
 //			});
+
+			// disable mouse interaction
 			DefaultMouseManager manager = new DefaultMouseManager();
 			defaultView.setMouseManager(manager);
 			manager.release();
@@ -190,7 +194,7 @@ public class GraphData {
 				value = Integer.toString(integerProperties.getInt(var));
 				break;
 			case DOUBLE:
-				value = df.format(doubleProperties.getDouble(var)); 
+				value = df.format(doubleProperties.getDouble(var));
 				break;
 			case STRING:
 				value = stringProperties.get(var);
@@ -213,6 +217,11 @@ public class GraphData {
 		GraphReadWrite.writeCSV(filename, stringGraph);
 	}
 
+	/**
+	 * called outside to set a mouse event (i.e. click selection event)
+	 * 
+	 * @param ma
+	 */
 	public void setMouseListener(MouseAdapter ma) {
 		if (mouseAdapter != null) {
 			defaultView.removeMouseListener(mouseAdapter);
