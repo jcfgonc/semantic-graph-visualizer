@@ -13,7 +13,6 @@ import javax.swing.border.LineBorder;
 
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.graphstream.graph.implementations.MultiGraph;
-import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.Layouts;
 import org.graphstream.ui.swing.SwingGraphRenderer;
@@ -153,6 +152,12 @@ public class GraphData {
 
 	}
 
+	public void removeFromGUI() {
+		viewer.disableAutoLayout();
+		defaultView.setEnabled(false);
+		defaultView.setVisible(false);
+	}
+
 	public void toggleSelected() {
 		lazyLoad();
 		setSelected(!isSelected());
@@ -160,8 +165,6 @@ public class GraphData {
 
 	@Override
 	public int hashCode() {
-		if (id == null)
-			return 0;
 		return id.hashCode();
 	}
 

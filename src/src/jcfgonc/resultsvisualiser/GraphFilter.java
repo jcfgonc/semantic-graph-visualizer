@@ -25,15 +25,21 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 public class GraphFilter {
 	private HashMap<String, GraphData> graphMap;
+	/**
+	 * list with the n (user specified) graphs shown in the GUI/graph panel
+	 */
 	private ArrayList<GraphData> visibleGraphList;
 	/**
 	 * original unmodified graph list
 	 */
 	private ArrayList<GraphData> originalGraphList;
 	/**
-	 * copy of the graph list which is progressively edited (has graphs removed)
+	 * copy of the graph list which is progressively edited (compared to the original list it has graphs removed and it is user-sorted)
 	 */
 	private ArrayList<GraphData> graphList;
+	/**
+	 * number of visible graphs
+	 */
 	private int numberVisibleGraphs = 0;
 	/**
 	 * a pointer to the currently clicked graph
@@ -217,7 +223,7 @@ public class GraphFilter {
 	}
 
 	/**
-	 * sets the number of graphs in the visible list, deleting or copying from the loaded list as needed
+	 * sets the number of graphs in the visible list, deleting or copying from the loaded list as needed. TESTED, OK.
 	 * 
 	 * @param num
 	 */
@@ -226,32 +232,25 @@ public class GraphFilter {
 			num = originalGraphList.size();
 		}
 
-		if (num > numberVisibleGraphs) {// fill
-			numberVisibleGraphs = num;
-			fillWithGraphs();
-		} else if (num < numberVisibleGraphs) {// crop
-			numberVisibleGraphs = num;
-			visibleGraphList = new ArrayList<GraphData>(visibleGraphList.subList(0, numberVisibleGraphs));
-		}
+		numberVisibleGraphs = num;
+		clearAndRefillVisibleGraphList();
 	}
 
-	private void updateVisibleList() {
+	private void clearAndRefillVisibleGraphList() {
 		visibleGraphList.clear();
-		fillWithGraphs();
+		fillVisibleList();
 	}
 
-	private void fillWithGraphs() {
-		HashSet<GraphData> _visibleGraphSet = new HashSet<>(visibleGraphList);
+	/**
+	 * inserts graphs into the visible list from the graphList until the visible list reaches 'numberVisibleGraphs' elements. TESTED, SEEMS OK.
+	 */
+	private void fillVisibleList() {
 		Iterator<GraphData> graphListIterator = graphList.iterator();
 		while (visibleGraphList.size() < numberVisibleGraphs && graphListIterator.hasNext()) {
 			GraphData gd = graphListIterator.next();
-
 			if (deletedGraphs.contains(gd))
 				continue;
-			if (_visibleGraphSet.contains(gd))
-				continue;
 			visibleGraphList.add(gd);
-			_visibleGraphSet.add(gd);
 		}
 	}
 
@@ -275,10 +274,8 @@ public class GraphFilter {
 			}
 			graphList.add(gd);
 		}
-		updateVisibleList();
+		clearAndRefillVisibleGraphList();
 		operatorClearSelection();
-		lastClickedGD = null;
-		currentlyClickedGD = null;
 	}
 
 	public void setGraphFilter(String variable, double lowValue, double highValue) {
@@ -310,10 +307,8 @@ public class GraphFilter {
 				}
 			}
 		});
-		updateVisibleList();
+		clearAndRefillVisibleGraphList();
 		operatorClearSelection();
-		lastClickedGD = null;
-		currentlyClickedGD = null;
 	}
 
 	public void operatorClearSelection() {
@@ -330,13 +325,16 @@ public class GraphFilter {
 			setGraphBorderState(graph, false);
 		});
 		selectedGraphs.clear();
+
+		lastClickedGD = null;
+		currentlyClickedGD = null;
 	}
 
 	public void operatorRestoreDeletedGraphs() {
 		deletedGraphs.clear();
 		graphList = new ArrayList<>(originalGraphList);
 		visibleGraphList.clear();
-		fillWithGraphs(); // to force re-ordering from copy
+		fillVisibleList(); // to force re-ordering from copy
 		// mark previously selected graphs as not selected
 	}
 
@@ -354,7 +352,7 @@ public class GraphFilter {
 		graphList.removeAll(_toDelete);
 		deletedGraphs.addAll(_toDelete);
 		// fill with new graphs properly ordered
-		fillWithGraphs();
+		fillVisibleList();
 	}
 
 	public void operatorDeleteSelection() {
