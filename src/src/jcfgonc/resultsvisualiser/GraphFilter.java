@@ -1,9 +1,6 @@
 package src.jcfgonc.resultsvisualiser;
 
-import java.awt.Color;
 import java.awt.Component;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,10 +13,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.JOptionPane;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-
-import org.apache.commons.lang3.mutable.MutableBoolean;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
@@ -28,7 +21,7 @@ public class GraphFilter {
 	/**
 	 * list with the n (user specified) graphs shown in the GUI/graph panel
 	 */
-	private ArrayList<GraphData> visibleGraphList;
+	private ArrayList<GraphData> visibleGraphList; 
 	/**
 	 * original unmodified graph list
 	 */
@@ -42,14 +35,6 @@ public class GraphFilter {
 	 */
 	private int numberVisibleGraphs = 0;
 	/**
-	 * a pointer to the currently clicked graph
-	 */
-	private GraphData currentlyClickedGD;
-	/**
-	 * a pointer to the last clicked graph
-	 */
-	private GraphData lastClickedGD;
-	/**
 	 * graphs which are currently selected (and highlighted)
 	 */
 	private HashSet<GraphData> selectedGraphs;
@@ -57,14 +42,6 @@ public class GraphFilter {
 	 * graphs which the user marked as deleted
 	 */
 	private HashSet<GraphData> deletedGraphs;
-	/**
-	 * graphs which are currently being selected with shift+mouse click
-	 */
-	private HashSet<GraphData> shiftSelectedGraphs;
-	/**
-	 * global status of the shift key
-	 */
-	private MutableBoolean shiftKeyPressed;
 	/**
 	 * maps the minimum (for all the loaded graphs) of a variable to its name
 	 */
@@ -77,13 +54,11 @@ public class GraphFilter {
 	private Object2DoubleOpenHashMap<String> variableFilterLow;
 	private Object2DoubleOpenHashMap<String> variableFilterHigh;
 
-	public GraphFilter(String graphDatafile, int numberShownGraphs, MutableBoolean shiftKeyPressed) throws IOException {
+	public GraphFilter(String graphDatafile, int numberShownGraphs) throws IOException {
 		this.graphMap = new HashMap<>();
-		this.shiftKeyPressed = shiftKeyPressed;
 		this.visibleGraphList = new ArrayList<>();
 		this.selectedGraphs = new HashSet<>();
 		this.deletedGraphs = new HashSet<GraphData>();
-		this.shiftSelectedGraphs = new HashSet<>();
 		this.minimumOfVariable = new Object2DoubleOpenHashMap<>();
 		this.maximumOfVariable = new Object2DoubleOpenHashMap<>();
 		this.lowHighVariableDifference = new Object2DoubleOpenHashMap<>();
@@ -100,71 +75,10 @@ public class GraphFilter {
 		if (graphList.isEmpty())
 			return;
 
-		for (GraphData gd : originalGraphList) {
-			addMouseClickHandler(gd);
-			graphMap.put(gd.getId(), gd);
-		}
-
 		System.out.format("setNumberVisibleGraphs()\n");
 		setNumberVisibleGraphs(numberShownGraphs);
 
 		System.out.format("GraphFilter() done\n");
-	}
-
-	private void addMouseClickHandler(GraphData gd) {
-		MouseAdapter mouseAdapter = new MouseAdapter() {
-			@Override
-			public void mousePressed(MouseEvent e) {
-				if (e.getButton() == MouseEvent.BUTTON1) {
-					String clickedComponent = e.getComponent().getName();
-					if (shiftKeyPressed.isTrue()) {
-						GraphData currentClickedTemp = getGraph(clickedComponent);
-						int i0 = visibleGraphList.indexOf(currentClickedTemp);
-						int i1;
-						if (currentlyClickedGD == null) {
-							i1 = 0;
-						} else {
-							i1 = visibleGraphList.indexOf(currentlyClickedGD);
-						}
-						unselectGraphs(shiftSelectedGraphs);
-						shiftSelectedGraphs.clear();
-						for (int i = Math.min(i0, i1); i <= Math.max(i0, i1); i++) {
-							GraphData g = visibleGraphList.get(i);
-							g.setSelected(true);
-							selectedGraphs.add(g);
-							shiftSelectedGraphs.add(g);
-						}
-					} else {
-						shiftSelectedGraphs.clear();
-						lastClickedGD = currentlyClickedGD;
-						currentlyClickedGD = getGraph(clickedComponent);
-						toggleSelected(currentlyClickedGD);
-						setGraphBorderState(lastClickedGD, false);
-						setGraphBorderState(currentlyClickedGD, true);
-					}
-				}
-			}
-
-			private void unselectGraphs(Collection<GraphData> graphs) {
-				if (graphs == null || graphs.isEmpty())
-					return;
-				graphs.parallelStream().forEach(gd -> {
-					gd.setSelected(false);
-				});
-				selectedGraphs.removeAll(graphs);
-			}
-		};
-		gd.setMouseListener(mouseAdapter);
-	}
-
-	private void setGraphBorderState(GraphData gd, boolean enabled) {
-		if (gd == null)
-			return;
-		if (enabled) {
-			gd.getDefaultView().setBorder(new LineBorder(Color.BLACK));
-		} else {
-			gd.getDefaultView().setBorder(new EmptyBorder(0, 0, 0, 0));
-		}
 	}
 
 	/**
@@ -312,22 +226,8 @@ public class GraphFilter {
 	}
 
 	public void operatorClearSelection() {
-		ArrayList<GraphData> graphs = new ArrayList<>();
-		graphs.addAll(selectedGraphs);
-		if (lastClickedGD != null) {
-			graphs.add(currentlyClickedGD);
-		}
-		if (currentlyClickedGD != null) {
-			graphs.add(currentlyClickedGD);
-		}
-		selectedGraphs.parallelStream().forEach(graph -> {
-			graph.setSelected(false);
-			setGraphBorderState(graph, false);
-		});
-		selectedGraphs.clear();
-
-		lastClickedGD = null;
-		currentlyClickedGD = null;
+		// TODO Auto-generated method stub
+		// done in class GraphInteraction
 	}
 
 	public void operatorRestoreDeletedGraphs() {
@@ -413,7 +313,7 @@ public class GraphFilter {
 			return;
 		}
 
-		// TODO
+		System.err.println("TODO: saveGraphsSingleCSV() in GraphFilter");
 		String filename = (String) JOptionPane.showInputDialog(parentComponent, "Type the filename", title, JOptionPane.PLAIN_MESSAGE, null, null,
 				suggestion);
 		for (GraphData gd : graphs) {
