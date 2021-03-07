@@ -65,9 +65,7 @@ public class GraphFilter {
 		this.variableFilterLow = new Object2DoubleOpenHashMap<>();
 		this.variableFilterHigh = new Object2DoubleOpenHashMap<>();
 
-		System.out.println("loading " + graphDatafile);
 		this.originalGraphList = GraphDataRead.readTSV(graphDatafile);
-		System.out.format("%d graphs loaded\n", originalGraphList.size());
 
 		System.out.format("adding MouseClickHandler\n");
 		this.graphList = new ArrayList<>(originalGraphList);

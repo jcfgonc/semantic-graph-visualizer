@@ -45,6 +45,8 @@ public class GraphPanelHandler {
 				graphPanel.add(defaultView);
 			}
 		}
+//		graphPanel.revalidate();
+	//	graphPanel.repaint();
 	}
 
 	public int getNumberOfGraphs() {

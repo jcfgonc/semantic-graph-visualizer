@@ -59,8 +59,8 @@ public class GraphResultsGUI extends JFrame {
 	private static final int NODE_SIZE_DEFAULT = 24;
 	private static final int NODE_SIZE_MAXIMUM = 100;
 	private static final int NUMBER_VISIBLE_GRAPHS_MINIMUM = 16;
-	private static final int NUMBER_VISIBLE_GRAPHS_DEFAULT = 32;
-	private static final int NUMBER_VISIBLE_GRAPHS_MAXIMUM = 128;
+	private static final int NUMBER_VISIBLE_GRAPHS_DEFAULT = 64;
+	private static final int NUMBER_VISIBLE_GRAPHS_MAXIMUM = 2048;
 	private static final int GRAPHS_PER_COLUMN_MINIMUM = 1;
 	private static final int GRAPHS_PER_COLUMN_DEFAULT = 4;
 	private static final int GRAPHS_PER_COLUMN_MAXIMUM = 10;
@@ -292,9 +292,12 @@ public class GraphResultsGUI extends JFrame {
 		numGraphsSlider.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
+				numGraphsLabel.setText(Integer.toString(source.getValue()));
+				
 				if (source.getValueIsAdjusting())
 					return;
-				changeNumberVisibleGraphs(source);
+				
+				changeNumberGraphs(source);
 			}
 		});
 		numGraphsPanel.add(numGraphsSlider);
@@ -449,7 +452,7 @@ public class GraphResultsGUI extends JFrame {
 		restartLayoutMenuItem = new JMenuItem("Restart graph(s) layout");
 		restartLayoutMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				restartGraphsLayoutVisible();
+				restartGraphsLayout();
 			}
 		});
 
@@ -465,7 +468,7 @@ public class GraphResultsGUI extends JFrame {
 		stopLayoutMenuItem = new JMenuItem("Stop graph(s) layout");
 		stopLayoutMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				stopGraphsLayoutVisible();
+				stopGraphsLayout();
 			}
 		});
 		mnView.add(stopLayoutMenuItem);
@@ -532,14 +535,14 @@ public class GraphResultsGUI extends JFrame {
 	/**
 	 * restarts (stops and then starts) the graph layout for the visible graphs
 	 */
-	private void restartGraphsLayoutVisible() {
+	private void restartGraphsLayout() {
 		graphPanelHandler.restartGraphsLayout();
 	}
 
 	/**
 	 * stops the graph layout for the visible graphs (graphFilter.getVisibleGraphList())
 	 */
-	private void stopGraphsLayoutVisible() {
+	private void stopGraphsLayout() {
 		graphPanelHandler.stopGraphsLayout();
 	}
 
@@ -554,6 +557,8 @@ public class GraphResultsGUI extends JFrame {
 	private void windowResized() {
 		int panelWidth = scrollPane.getViewport().getWidth();
 		graphPanelHandler.setupPanelSize(panelWidth, graphsPerColumn);
+		scrollPane.revalidate();
+		scrollPane.repaint();
 	}
 
 	/**
@@ -614,7 +619,7 @@ public class GraphResultsGUI extends JFrame {
 					if (slider.getValueIsAdjusting())
 						return;
 					if (GraphResultsGUI.this.isVisible()) {
-						updateGraphFiltering(variable, lowValue, highValue);
+						filterGraphs(variable, lowValue, highValue);
 					}
 				}
 			});
@@ -660,14 +665,20 @@ public class GraphResultsGUI extends JFrame {
 		graphPanelHandler.updateNodesSize(graphNodeSize);
 	}
 
-	private void changeNumberVisibleGraphs(JSlider source) {
+	private void changeNumberGraphs(JSlider source) {
 		int numOfGraphs = source.getValue();
-		numGraphsLabel.setText(Integer.toString(numOfGraphs));
+
+		// can't reduce number of rendered graphs (graphstream seems to have a resource leak)
+		if (numOfGraphs < graphFilter.getNumberOfVisibleGraphs())
+			return;
+
 		graphFilter.setNumberVisibleGraphs(numOfGraphs);
 		graphPanelHandler.setNumberOfGraphs(numOfGraphs);
 
 		// additional graphs may have been given and we must layout them again
 		refreshGraphs();
+		scrollPane.revalidate();
+		scrollPane.repaint();
 	}
 
 	private void restoreDeletedGraphs() {
@@ -700,7 +711,7 @@ public class GraphResultsGUI extends JFrame {
 	 * @param lowValue
 	 * @param highValue
 	 */
-	private void updateGraphFiltering(String variable, double lowValue, double highValue) {
+	private void filterGraphs(String variable, double lowValue, double highValue) {
 		graphFilter.setGraphFilter(variable, lowValue, highValue);
 		graphFilter.operatorFilterGraphs();
 		refreshGraphs();

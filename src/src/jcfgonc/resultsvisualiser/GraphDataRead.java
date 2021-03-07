@@ -16,7 +16,8 @@ import utils.NonblockingBufferedReader;
 import utils.VariousUtils;
 
 /**
- * Reads a TSV (tab separated values) file and creates a List of GraphData instances, one for each row of the file (excluding the first row which is the required header).
+ * Reads a TSV (tab separated values) file and creates a List of GraphData instances, one for each row of the file (excluding the first row which is
+ * the required header).
  * 
  * @author jcfgonc@gmail.com
  *
@@ -50,7 +51,7 @@ public class GraphDataRead {
 		}
 		// no more data to read
 		br.close();
-		System.out.println("done. Took " + t.getElapsedTime() + " seconds.");
+		System.out.println("done. Loaded " + graphs.size() + " graphs. Took " + t.getElapsedTime() + " seconds.");
 		return graphs;
 	}
 
@@ -152,11 +153,4 @@ public class GraphDataRead {
 		}
 		return types;
 	}
-
-	public static void main(String[] args) throws IOException {
-		String filename = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-01-26_04-16-50.tsv";
-		while (true)
-			readTSV(filename);
-	}
-
 }
