@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 import javax.swing.BoxLayout;
@@ -57,9 +58,9 @@ public class GraphResultsGUI extends JFrame {
 	private static final int NODE_SIZE_MINIMUM = 0;
 	private static final int NODE_SIZE_DEFAULT = 24;
 	private static final int NODE_SIZE_MAXIMUM = 100;
-	private static final int NUMBER_VISIBLE_GRAPHS_MINIMUM = 1;
-	private static final int NUMBER_VISIBLE_GRAPHS_DEFAULT = 16;
-	private static final int NUMBER_VISIBLE_GRAPHS_MAXIMUM = 1024;
+	private static final int NUMBER_VISIBLE_GRAPHS_MINIMUM = 16;
+	private static final int NUMBER_VISIBLE_GRAPHS_DEFAULT = 32;
+	private static final int NUMBER_VISIBLE_GRAPHS_MAXIMUM = 128;
 	private static final int GRAPHS_PER_COLUMN_MINIMUM = 1;
 	private static final int GRAPHS_PER_COLUMN_DEFAULT = 4;
 	private static final int GRAPHS_PER_COLUMN_MAXIMUM = 10;
@@ -72,7 +73,7 @@ public class GraphResultsGUI extends JFrame {
 	 */
 	public static void main(String[] args) throws NoSuchFileException, IOException {
 //		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
-		System.setProperty("org.graphstream.ui", "org.graphstream.ui.swingViewer.util.SwingDisplay");
+//		System.setProperty("org.graphstream.ui", "org.graphstream.ui.swingViewer.util.SwingDisplay");
 
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -137,6 +138,7 @@ public class GraphResultsGUI extends JFrame {
 	private JMenuItem stopLayoutMenuItem;
 	private JMenuItem restartLayoutMenuItem;
 	private GraphPanelHandler graphPanelHandler;
+	private JMenuItem shakeLayoutMenuItem;
 //	private GraphInteraction graphInteraction;
 
 	/**
@@ -216,7 +218,7 @@ public class GraphResultsGUI extends JFrame {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
 				if (GraphResultsGUI.this.isVisible()) {
-					updateGraphsVariableControl(source);
+					changeNumberGraphsPerColumn(source);
 				}
 			}
 		});
@@ -244,7 +246,7 @@ public class GraphResultsGUI extends JFrame {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
 				if (GraphResultsGUI.this.isVisible()) {
-					updateGraphFontsSizeControl(source);
+					changeGraphFontsSize(source);
 				}
 			}
 		});
@@ -272,7 +274,7 @@ public class GraphResultsGUI extends JFrame {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
 				if (GraphResultsGUI.this.isVisible()) {
-					updateNodeSizeControl(source);
+					changeGraphNodeSize(source);
 				}
 			}
 		});
@@ -290,9 +292,9 @@ public class GraphResultsGUI extends JFrame {
 		numGraphsSlider.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				JSlider source = (JSlider) e.getSource();
-				if (GraphResultsGUI.this.isVisible()) {
-					updateNumberVisibleGraphsControl(source);
-				}
+				if (source.getValueIsAdjusting())
+					return;
+				changeNumberVisibleGraphs(source);
 			}
 		});
 		numGraphsPanel.add(numGraphsSlider);
@@ -450,6 +452,14 @@ public class GraphResultsGUI extends JFrame {
 				restartGraphsLayoutVisible();
 			}
 		});
+
+		shakeLayoutMenuItem = new JMenuItem("Shake graph(s) layout");
+		shakeLayoutMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				shakeGraphsLayout();
+			}
+		});
+		mnView.add(shakeLayoutMenuItem);
 		mnView.add(restartLayoutMenuItem);
 
 		stopLayoutMenuItem = new JMenuItem("Stop graph(s) layout");
@@ -492,31 +502,31 @@ public class GraphResultsGUI extends JFrame {
 	}
 
 	protected void initializeTheRest() throws NoSuchFileException, IOException {
+		// tooltip show and dismiss delays
 		ToolTipManager ttm = ToolTipManager.sharedInstance();
 		ttm.setInitialDelay(250);
 		ttm.setDismissDelay(3600 * 1000);
+
 		graphFilter = new GraphFilter(graphDatafile, NUMBER_VISIBLE_GRAPHS_DEFAULT);
-	//	graphInteraction = new GraphInteraction();
 		if (!graphFilter.hasVisibleGraphs()) {
 			System.err.println("no graph data loaded...");
 			System.exit(-1);
 		}
 
+		// graphInteraction = new GraphInteraction();
+		createSortingOptions();
+		// create the filtering panels
+		createFilteringPanels();
+		graphPanelHandler = new GraphPanelHandler(graphPanel, NUMBER_VISIBLE_GRAPHS_DEFAULT);
+		refreshGraphs();
+
+		// center and maximize window
+		setLocationRelativeTo(null);
 		setExtendedState(this.getExtendedState() | JFrame.MAXIMIZED_BOTH);
 		// double w = 640 * OSTools.getScreenScale();
 		// double h = 480 * OSTools.getScreenScale();
 		// setSize(new Dimension((int) w, (int) h));
 		this.setVisible(true);
-
-		// center window
-		setLocationRelativeTo(null);
-
-		graphPanelHandler = new GraphPanelHandler(graphPanel, NUMBER_VISIBLE_GRAPHS_DEFAULT);
-
-		updateGraphsPanel();
-		createSortingOptions();
-		// create the filtering panels
-		createFilteringPanels();
 	}
 
 	/**
@@ -531,6 +541,10 @@ public class GraphResultsGUI extends JFrame {
 	 */
 	private void stopGraphsLayoutVisible() {
 		graphPanelHandler.stopGraphsLayout();
+	}
+
+	private void shakeGraphsLayout() {
+		graphPanelHandler.shakeGraphs();
 	}
 
 	private void quit() {
@@ -623,48 +637,47 @@ public class GraphResultsGUI extends JFrame {
 	/**
 	 * calls the panel's handling code to update with the filter's visible graphs
 	 */
-	private void updateGraphsPanel() {
-		graphPanelHandler.refreshGraphs(graphFilter.getVisibleGraphList());
+	private void refreshGraphs() {
+		List<GraphData> visibleGraphList = graphFilter.getVisibleGraphList();
+		graphPanelHandler.refreshGraphs(visibleGraphList);
 	}
 
-	private void updateGraphsVariableControl(JSlider source) {
+	private void changeNumberGraphsPerColumn(JSlider source) {
 		graphsPerColumn = source.getValue();
 		numGraphsColumnLabel.setText(Integer.toString(graphsPerColumn));
 		windowResized();
 	}
 
-	private void updateGraphFontsSizeControl(JSlider source) {
+	private void changeGraphFontsSize(JSlider source) {
 		int graphFontSize = source.getValue();
 		fontSizeLabel.setText(Integer.toString(graphFontSize));
 		graphPanelHandler.updateFontsSize(graphFontSize);
 	}
 
-	private void updateNodeSizeControl(JSlider source) {
+	private void changeGraphNodeSize(JSlider source) {
 		int graphNodeSize = source.getValue();
 		nodeSizeLabel.setText(Integer.toString(graphNodeSize));
 		graphPanelHandler.updateNodesSize(graphNodeSize);
 	}
 
-	private void updateNumberVisibleGraphsControl(JSlider source) {
+	private void changeNumberVisibleGraphs(JSlider source) {
 		int numOfGraphs = source.getValue();
 		numGraphsLabel.setText(Integer.toString(numOfGraphs));
-		if (source.getValueIsAdjusting())
-			return;
 		graphFilter.setNumberVisibleGraphs(numOfGraphs);
 		graphPanelHandler.setNumberOfGraphs(numOfGraphs);
 
 		// additional graphs may have been given and we must layout them again
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 	private void restoreDeletedGraphs() {
 		graphFilter.operatorRestoreDeletedGraphs();
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 	private void cropSelection() {
 		graphFilter.operatorCropSelection();
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 	private void sortGraphs() {
@@ -672,12 +685,12 @@ public class GraphResultsGUI extends JFrame {
 		String directionText = (String) sortingDirectionBox.getSelectedItem();
 		boolean sortAscending = directionText.equals("ascending");
 		graphFilter.operatorSortGraphs(variable, sortAscending);
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 	private void deleteSelectedGraphs() {
 		graphFilter.operatorDeleteSelection();
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 	/**
@@ -690,7 +703,7 @@ public class GraphResultsGUI extends JFrame {
 	private void updateGraphFiltering(String variable, double lowValue, double highValue) {
 		graphFilter.setGraphFilter(variable, lowValue, highValue);
 		graphFilter.operatorFilterGraphs();
-		updateGraphsPanel();
+		refreshGraphs();
 	}
 
 }

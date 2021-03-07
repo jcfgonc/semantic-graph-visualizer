@@ -12,7 +12,6 @@ import org.graphstream.ui.swing_viewer.DefaultView;
 import org.graphstream.ui.view.Viewer;
 
 import graph.StringGraph;
-import visual.GraphStreamUtils;
 
 public class GraphPanelHandler {
 	/**
@@ -28,6 +27,7 @@ public class GraphPanelHandler {
 		this.graphPanel = graphPanel;
 		this.vgraphs = new ArrayList<VisualGraph>(numberOfGraphs);
 
+		graphPanel.removeAll();
 		setNumberOfGraphs(numberOfGraphs);
 	}
 
@@ -40,6 +40,9 @@ public class GraphPanelHandler {
 				// create an empty graph
 				VisualGraph vg = new VisualGraph(i);
 				vgraphs.add(vg);
+				// graph is added to panel here
+				DefaultView defaultView = vg.getDefaultView();
+				graphPanel.add(defaultView);
 			}
 		}
 	}
@@ -69,11 +72,11 @@ public class GraphPanelHandler {
 	 * sets up the font's size (CSS) for all the visible graphs
 	 */
 	public void updateFontsSize(int graphFontSize) {
-		for (VisualGraph vgraph : vgraphs) {
+		vgraphs.parallelStream().forEach(vgraph -> {
 			String style = String.format("edge { text-size: %d; } node { text-size: %d; }", graphFontSize, graphFontSize);
 			MultiGraph mgraph = vgraph.getMultiGraph();
 			mgraph.setAttribute("ui.stylesheet", style);
-		}
+		});
 	}
 
 	/**
@@ -82,33 +85,25 @@ public class GraphPanelHandler {
 	 * @param multiGraphs
 	 */
 	public void refreshGraphs(List<GraphData> newGraphs) {
-		clearGraphs();
-
 		for (int i = 0; i < vgraphs.size() && i < newGraphs.size(); i++) {
 			GraphData gd = newGraphs.get(i);
 			StringGraph stringGraph = gd.getStringGraph();
 			VisualGraph visualGraph = vgraphs.get(i);
-			MultiGraph multiGraph = visualGraph.getMultiGraph();
-			GraphStreamUtils.addEdgesToGraph(multiGraph, stringGraph.edgeSet()); // copy edges from the data-graph to the visual-graph
-			visualGraph.shakeLayout();
+			visualGraph.refreshGraph(stringGraph);
 		}
-//		graphPanel.revalidate();
-//		graphPanel.repaint();
 	}
 
 	public void clearGraphs() {
-		for (VisualGraph graph : vgraphs) {
-			MultiGraph multiGraph = graph.getMultiGraph();
-			multiGraph.clear(); // only function graphstream has to clear nodes/edges (which also clears styles)
-			GraphStreamUtils.setupStyleSheet(multiGraph); // dumb graphstream clears styles, recreate them
-		}
+		vgraphs.parallelStream().forEach(vgraph -> {
+			vgraph.clear();
+		});
 	}
 
 	/**
 	 * sets up the node's size (CSS) for all the visible graphs
 	 */
 	public void updateNodesSize(int graphNodeSize) {
-		for (VisualGraph vgraph : vgraphs) {
+		vgraphs.parallelStream().forEach(vgraph -> {
 			MultiGraph mgraph = vgraph.getMultiGraph();
 			String style;
 			if (graphNodeSize == 0) {
@@ -117,22 +112,25 @@ public class GraphPanelHandler {
 				style = String.format("node { stroke-mode: plain; size: %dpx; }", graphNodeSize, graphNodeSize);
 			}
 			mgraph.setAttribute("ui.stylesheet", style);
-		}
+		});
 	}
 
 	public void restartGraphsLayout() {
-		for (VisualGraph vgraph : vgraphs) {
-			vgraph.getLayout().shake();
-//			Viewer viewer = vgraph.getViewer();
-//			viewer.disableAutoLayout();
-//			viewer.enableAutoLayout();
-		}
+		vgraphs.parallelStream().forEach(vgraph -> {
+			vgraph.restartLayout();
+		});
+	}
+
+	public void shakeGraphs() {
+		vgraphs.parallelStream().forEach(vgraph -> {
+			vgraph.shakeLayout();
+		});
 	}
 
 	public void stopGraphsLayout() {
-		for (VisualGraph vgraph : vgraphs) {
+		vgraphs.parallelStream().forEach(vgraph -> {
 			Viewer viewer = vgraph.getViewer();
 			viewer.disableAutoLayout();
-		}
+		});
 	}
 }

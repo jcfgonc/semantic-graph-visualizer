@@ -16,6 +16,7 @@ import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.graphstream.ui.view.Viewer.ThreadingModel;
 
+import graph.StringGraph;
 import visual.GraphStreamUtils;
 
 /**
@@ -88,10 +89,6 @@ public class VisualGraph {
 		return id;
 	}
 
-	public Layout getLayout() {
-		return layout;
-	}
-
 	public MultiGraph getMultiGraph() {
 		return multiGraph;
 	}
@@ -100,7 +97,36 @@ public class VisualGraph {
 		return viewer;
 	}
 
+	/**
+	 * shake a little the vertices of the graph
+	 */
 	public void shakeLayout() {
 		layout.shake();
+	}
+
+	/**
+	 * starts the layout of the graph from a random configuration
+	 */
+	public void restartLayout() {
+		viewer.disableAutoLayout();
+		viewer.enableAutoLayout();
+	}
+
+	/**
+	 * clears the edges/nodes of the visual graph while mantaining the style sheet
+	 */
+	public void clear() {
+		multiGraph.clear(); // only function graphstream has to clear nodes/edges (which also clears styles)
+		GraphStreamUtils.setupStyleSheet(multiGraph); // dumb graphstream clears styles, recreate them
+	}
+
+	/**
+	 * clears the edges/nodes of the visual graph replacing it the the given one
+	 * 
+	 * @param stringGraph
+	 */
+	public void refreshGraph(StringGraph stringGraph) {
+		clear();
+		GraphStreamUtils.addEdgesToGraph(multiGraph, stringGraph.edgeSet()); // copy edges from the data-graph to the visual-graph
 	}
 }
