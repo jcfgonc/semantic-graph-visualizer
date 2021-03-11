@@ -147,7 +147,6 @@ public class GraphPanelHandler {
 			double mag = (double) factor / 100.0;
 			camera.setViewPercent(mag); // not in percent but normalized to 1
 			defaultView.repaint();
-			// camera.setViewRotation(mag);
 		}
 	}
 

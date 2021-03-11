@@ -43,9 +43,6 @@ public class GraphData {
 		this.stringProperties = new HashMap<String, String>();
 	}
 
-	public boolean isSelected() {
-		return selected;
-	}
 
 	@Override
 	public String toString() {
@@ -54,6 +51,10 @@ public class GraphData {
 
 	public String getId() {
 		return id;
+	}
+
+	public boolean isSelected() {
+		return selected;
 	}
 
 	public void setSelected(boolean s) {

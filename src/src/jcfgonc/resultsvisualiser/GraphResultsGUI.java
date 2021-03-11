@@ -354,9 +354,6 @@ public class GraphResultsGUI extends JFrame {
 				graphMagnificationLabel.setText(Integer.toString(factor));
 
 				changeGraphsMagnification(factor);
-				if (factor == 100) {
-					resetViewGraphs();
-				}
 			}
 		});
 		graphMagnificationPanel.add(graphMagnificationSlider);
@@ -612,7 +609,7 @@ public class GraphResultsGUI extends JFrame {
 		mnTools.add(debugDeletedMenuItem);
 	}
 
-	protected void initializeTheRest() throws NoSuchFileException, IOException {
+	private void initializeTheRest() throws NoSuchFileException, IOException {
 		// tooltip show and dismiss delays
 		ToolTipManager ttm = ToolTipManager.sharedInstance();
 		ttm.setInitialDelay(250);
@@ -660,6 +657,7 @@ public class GraphResultsGUI extends JFrame {
 
 	private void resetViewGraphs() {
 		graphMagnificationSlider.setValue(GRAPH_ZOOM_DEFAULT);
+		graphRotationSlider.setValue(GRAPH_ROTATION_DEFAULT);
 		graphPanelHandler.resetViewGraphs();
 	}
 

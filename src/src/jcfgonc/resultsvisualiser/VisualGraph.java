@@ -1,8 +1,13 @@
 package src.jcfgonc.resultsvisualiser;
 
 import java.awt.Color;
-import java.awt.event.MouseAdapter;
+import java.awt.Point;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 
+import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
 
 import org.graphstream.graph.implementations.MultiGraph;
@@ -38,10 +43,8 @@ public class VisualGraph {
 	 * graph layout engine
 	 */
 	private Layout layout;
-	/**
-	 * mouse events handler for this renderer
-	 */
-	private MouseAdapter mouseAdapter;
+	private Point dragStartingPoint;
+	private Point dragEndingPoint;
 
 	public VisualGraph(int uniqueID) {
 		id = uniqueID;
@@ -56,50 +59,15 @@ public class VisualGraph {
 
 		defaultView = (DefaultView) viewer.addView("graph" + id_str, new SwingGraphRenderer(), false);
 		defaultView.setBorder(new LineBorder(Color.BLACK));
-		// defaultView.enableMouseOptions();
-		// defaultView.getCamera().setAutoFitView(true);
+
+		// disable graphstream's keyboard shortcuts (interfere with the GUI)
+		removeListeners();
+
+		addMotionListener();
 
 		// and setup the layout engine
 		layout = Layouts.newLayoutAlgorithm();
 		viewer.enableAutoLayout(layout);
-
-		// disable mouse interaction
-//		DefaultMouseManager manager = new DefaultMouseManager();
-//		defaultView.setMouseManager(manager);
-//		manager.release();
-		// addMouseListener();
-
-		// disable graphstream's keyboard shortcuts (interfere with the GUI)
-		defaultView.setShortcutManager(new EmptyShortcutManager());
-	}
-
-	/**
-	 * called outside to set a mouse event (i.e. click selection event)
-	 * 
-	 * @param ma
-	 */
-	public void setMouseListener(MouseAdapter ma) {
-		if (mouseAdapter != null) {
-			defaultView.removeMouseListener(mouseAdapter);
-		}
-		this.mouseAdapter = ma;
-		defaultView.addMouseListener(mouseAdapter);
-	}
-
-	public DefaultView getDefaultView() {
-		return defaultView;
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public MultiGraph getMultiGraph() {
-		return multiGraph;
-	}
-
-	public Viewer getViewer() {
-		return viewer;
 	}
 
 	/**
@@ -133,5 +101,89 @@ public class VisualGraph {
 	public void refreshGraph(StringGraph stringGraph) {
 		clear();
 		GraphStreamUtils.addEdgesToGraph(multiGraph, stringGraph.edgeSet()); // copy edges from the data-graph to the visual-graph
+	}
+
+	public DefaultView getDefaultView() {
+		return defaultView;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public MultiGraph getMultiGraph() {
+		return multiGraph;
+	}
+
+	public Viewer getViewer() {
+		return viewer;
+	}
+
+	private void addMotionListener() {
+		defaultView.addMouseMotionListener(new MouseMotionListener() {
+
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				// unneeded
+			}
+
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				dragEndingPoint = e.getPoint();
+				if (SwingUtilities.isLeftMouseButton(e)) {
+					Point p = new Point(//
+							dragEndingPoint.x - dragStartingPoint.x, //
+							dragEndingPoint.y - dragStartingPoint.y);
+					System.out.println(p);
+				} else if (SwingUtilities.isRightMouseButton(e)) {
+					double d = dragEndingPoint.distance(dragStartingPoint);
+					System.out.println(d);
+				}
+			}
+		});
+		defaultView.addMouseListener(new MouseListener() {
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				// unneeded
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+				dragStartingPoint = e.getPoint();
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+				// unneeded
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				// unneeded
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				// unneeded
+			}
+		});
+	}
+
+	/**
+	 * remove damned graphstream's listeners, we don't serve their kind here
+	 */
+	private void removeListeners() {
+		for (MouseListener listener : defaultView.getMouseListeners()) {
+			defaultView.removeMouseListener(listener);
+		}
+
+		for (MouseMotionListener listener : defaultView.getMouseMotionListeners()) {
+			defaultView.removeMouseMotionListener(listener);
+		}
+
+		for (KeyListener listener : defaultView.getKeyListeners()) {
+			defaultView.removeKeyListener(listener);
+		}
 	}
 }
