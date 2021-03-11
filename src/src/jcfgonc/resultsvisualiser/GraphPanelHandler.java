@@ -10,6 +10,7 @@ import javax.swing.JPanel;
 import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.ui.swing_viewer.DefaultView;
 import org.graphstream.ui.view.Viewer;
+import org.graphstream.ui.view.camera.Camera;
 
 import graph.StringGraph;
 
@@ -46,7 +47,7 @@ public class GraphPanelHandler {
 			}
 		}
 //		graphPanel.revalidate();
-	//	graphPanel.repaint();
+		// graphPanel.repaint();
 	}
 
 	public int getNumberOfGraphs() {
@@ -134,5 +135,38 @@ public class GraphPanelHandler {
 			Viewer viewer = vgraph.getViewer();
 			viewer.disableAutoLayout();
 		});
+	}
+
+	/**
+	 * @param factor in percent, 1...max int
+	 */
+	public void changeGraphsMagnification(int factor) {
+		for (VisualGraph vgraph : vgraphs) {
+			DefaultView defaultView = vgraph.getDefaultView();
+			Camera camera = defaultView.getCamera();
+			double mag = (double) factor / 100.0;
+			camera.setViewPercent(mag); // not in percent but normalized to 1
+			defaultView.repaint();
+			// camera.setViewRotation(mag);
+		}
+	}
+
+	/**
+	 * @param angle in degrees, can be negative or positive
+	 */
+	public void changeGraphsRotation(int angleDegrees) {
+		for (VisualGraph vgraph : vgraphs) {
+			DefaultView defaultView = vgraph.getDefaultView();
+			Camera camera = defaultView.getCamera();
+			camera.setViewRotation(angleDegrees);
+		}
+	}
+
+	public void resetViewGraphs() {
+		for (VisualGraph vgraph : vgraphs) {
+			DefaultView defaultView = vgraph.getDefaultView();
+			Camera camera = defaultView.getCamera();
+			camera.resetView();
+		}
 	}
 }

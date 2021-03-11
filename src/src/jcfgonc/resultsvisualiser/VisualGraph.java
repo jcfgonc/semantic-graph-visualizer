@@ -11,7 +11,6 @@ import org.graphstream.ui.layout.Layouts;
 import org.graphstream.ui.swing.SwingGraphRenderer;
 import org.graphstream.ui.swing_viewer.DefaultView;
 import org.graphstream.ui.swing_viewer.SwingViewer;
-import org.graphstream.ui.swing_viewer.util.DefaultMouseManager;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.graphstream.ui.view.Viewer.ThreadingModel;
@@ -57,15 +56,21 @@ public class VisualGraph {
 
 		defaultView = (DefaultView) viewer.addView("graph" + id_str, new SwingGraphRenderer(), false);
 		defaultView.setBorder(new LineBorder(Color.BLACK));
+		// defaultView.enableMouseOptions();
+		// defaultView.getCamera().setAutoFitView(true);
+
 		// and setup the layout engine
 		layout = Layouts.newLayoutAlgorithm();
 		viewer.enableAutoLayout(layout);
 
 		// disable mouse interaction
-		DefaultMouseManager manager = new DefaultMouseManager();
-		defaultView.setMouseManager(manager);
-		manager.release();
+//		DefaultMouseManager manager = new DefaultMouseManager();
+//		defaultView.setMouseManager(manager);
+//		manager.release();
 		// addMouseListener();
+
+		// disable graphstream's keyboard shortcuts (interfere with the GUI)
+		defaultView.setShortcutManager(new EmptyShortcutManager());
 	}
 
 	/**

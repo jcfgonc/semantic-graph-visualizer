@@ -16,6 +16,9 @@ node {
 	text-font: verdana;
 	text-style: normal;
 	text-alignment: center;
+	text-background-mode: plain;
+	text-background-color: rgba(0,255,0,128);
+/*	size-mode: fit;*/
 }
 
 
