@@ -72,7 +72,7 @@ public class GraphResultsGUI extends JFrame {
 
 	private static final int GRAPH_ZOOM_MINIMUM = 1;
 	private static final int GRAPH_ZOOM_DEFAULT = 100;
-	private static final int GRAPH_ZOOM_MAXIMUM = 1000;
+	private static final int GRAPH_ZOOM_MAXIMUM = 250;
 
 	private static final int GRAPH_ROTATION_MINIMUM = -360;
 	private static final int GRAPH_ROTATION_DEFAULT = 0;
@@ -85,8 +85,9 @@ public class GraphResultsGUI extends JFrame {
 	 * @throws NoSuchFileException
 	 */
 	public static void main(String[] args) throws NoSuchFileException, IOException {
-//		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
-//		System.setProperty("org.graphstream.ui", "org.graphstream.ui.swingViewer.util.SwingDisplay");
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		System.setProperty("org.graphstream.ui", "org.graphstream.ui.swingViewer.util.SwingDisplay");
+		System.setProperty("org.graphstream.ui", "swing");
 
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -366,7 +367,7 @@ public class GraphResultsGUI extends JFrame {
 		graphRotationPanel = new JPanel();
 		renderingControlPanel.add(graphRotationPanel);
 		graphRotationPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.LOWERED, new Color(255, 255, 255), new Color(160, 160, 160)),
-				"Graph rotation", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+				"Graph rotation (degrees)", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 		graphRotationPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 		graphRotationSlider = new JSlider(GRAPH_ROTATION_MINIMUM, GRAPH_ROTATION_MAXIMUM, GRAPH_ROTATION_DEFAULT);
 		graphRotationSlider.addMouseListener(new MouseAdapter() {

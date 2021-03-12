@@ -11,6 +11,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
 
 import org.graphstream.graph.implementations.MultiGraph;
+import org.graphstream.ui.geom.Point3;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.Layouts;
 import org.graphstream.ui.swing.SwingGraphRenderer;
@@ -19,6 +20,7 @@ import org.graphstream.ui.swing_viewer.SwingViewer;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.graphstream.ui.view.Viewer.ThreadingModel;
+import org.graphstream.ui.view.camera.DefaultCamera2D;
 
 import graph.StringGraph;
 import visual.GraphStreamUtils;
@@ -45,12 +47,13 @@ public class VisualGraph {
 	private Layout layout;
 	private Point dragStartingPoint;
 	private Point dragEndingPoint;
+	private double rotationDegrees;
 
 	public VisualGraph(int uniqueID) {
 		id = uniqueID;
+		rotationDegrees = 0;
 		String id_str = Integer.toString(uniqueID);
 		multiGraph = GraphStreamUtils.initializeGraphStream(id_str);
-		// GraphStreamUtils.addEdgesToGraph(multiGraph, stringGraph.edgeSet());
 
 		// its viewer/renderer
 		viewer = new SwingViewer(multiGraph, ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
@@ -81,12 +84,13 @@ public class VisualGraph {
 	 * starts the layout of the graph from a random configuration
 	 */
 	public void restartLayout() {
+		resetView();
 		viewer.disableAutoLayout();
 		viewer.enableAutoLayout();
 	}
 
 	/**
-	 * clears the edges/nodes of the visual graph while mantaining the style sheet
+	 * clears the edges/nodes of the visual graph while maintaining the style sheet
 	 */
 	public void clear() {
 		multiGraph.clear(); // only function graphstream has to clear nodes/edges (which also clears styles)
@@ -119,6 +123,80 @@ public class VisualGraph {
 		return viewer;
 	}
 
+	/**
+	 * sets the camera's zoom (as a multiplier)
+	 * 
+	 * @param factor 1 is the default scale
+	 */
+	public void changeMagnification(double factor) {
+		DefaultCamera2D camera = (DefaultCamera2D) defaultView.getCamera();
+		camera.setViewPercent(factor); // dumb graphstream documentation... it's not in percent but as a factor (1=no scaling)
+	}
+
+	/**
+	 * rotates the camera with the given angle
+	 * 
+	 * @param angleDegrees 0 does nothing
+	 */
+	public void changeRotation(double angleDegrees) {
+		rotationDegrees += angleDegrees;
+		DefaultCamera2D camera = (DefaultCamera2D) defaultView.getCamera();
+		camera.setViewRotation(rotationDegrees);
+	}
+
+	/**
+	 * sets the camera rotation to the given angle (in absolute, not cumulative)
+	 * 
+	 * @param angleDegrees 0 is the default unrotated camera
+	 */
+	public void changeRotationAbsolute(double angleDegrees) {
+		rotationDegrees = angleDegrees;
+		DefaultCamera2D camera = (DefaultCamera2D) defaultView.getCamera();
+		camera.setViewRotation(rotationDegrees);
+	}
+
+	public void resetView() {
+		DefaultCamera2D camera = (DefaultCamera2D) defaultView.getCamera();
+		rotationDegrees = 0;
+		camera.setViewRotation(rotationDegrees);
+		camera.resetView();
+	}
+
+	private void mouseDraggedEvent(MouseEvent e) {
+		dragEndingPoint = e.getPoint();
+		if (SwingUtilities.isLeftMouseButton(e)) {
+			translateGraph();
+		} else if (SwingUtilities.isRightMouseButton(e)) {
+			rotateGraph();
+		}
+		dragStartingPoint = dragEndingPoint;
+	}
+
+	private void rotateGraph() {
+		Point delta = new Point(//
+				dragEndingPoint.x - dragStartingPoint.x, //
+				dragEndingPoint.y - dragStartingPoint.y);
+		if (delta.x != 0 || delta.y != 0) {
+			double angle = delta.x + delta.y;
+			changeRotation(angle);
+		}
+	}
+
+	private void translateGraph() {
+		Point delta = new Point(//
+				dragEndingPoint.x - dragStartingPoint.x, //
+				dragEndingPoint.y - dragStartingPoint.y);
+		if (delta.x != 0 || delta.y != 0) {
+			DefaultCamera2D camera = (DefaultCamera2D) defaultView.getCamera();
+			Point3 viewCenter = camera.getViewCenter();
+			double scale = 0.005;
+			double newX = (double) (viewCenter.x - delta.x * scale);
+			double newY = (double) (viewCenter.y + delta.y * scale);
+			double newZ = (double) (viewCenter.z);
+			camera.setViewCenter(newX, newY, newZ);
+		}
+	}
+
 	private void addMotionListener() {
 		defaultView.addMouseMotionListener(new MouseMotionListener() {
 
@@ -129,16 +207,7 @@ public class VisualGraph {
 
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				dragEndingPoint = e.getPoint();
-				if (SwingUtilities.isLeftMouseButton(e)) {
-					Point p = new Point(//
-							dragEndingPoint.x - dragStartingPoint.x, //
-							dragEndingPoint.y - dragStartingPoint.y);
-					System.out.println(p);
-				} else if (SwingUtilities.isRightMouseButton(e)) {
-					double d = dragEndingPoint.distance(dragStartingPoint);
-					System.out.println(d);
-				}
+				mouseDraggedEvent(e);
 			}
 		});
 		defaultView.addMouseListener(new MouseListener() {
