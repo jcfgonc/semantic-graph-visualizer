@@ -15,6 +15,12 @@ import javax.swing.border.LineBorder;
 
 import org.apache.commons.lang3.mutable.MutableBoolean;
 
+/**
+ * TODO this class is to handle selection events. WIP
+ * 
+ * @author jcfgonc@gmail.com
+ *
+ */
 public class GraphInteraction {
 	/**
 	 * graphs which are currently being selected with shift+mouse click
