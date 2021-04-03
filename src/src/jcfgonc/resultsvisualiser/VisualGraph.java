@@ -255,4 +255,8 @@ public class VisualGraph {
 			defaultView.removeKeyListener(listener);
 		}
 	}
+
+	public void setToolTip(String toolTipText) {
+		defaultView.setToolTipText(toolTipText);
+	}
 }

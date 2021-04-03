@@ -21,25 +21,25 @@ public class GraphPanelHandler {
 	/**
 	 * array of graph windows to render
 	 */
-	private ArrayList<VisualGraph> vgraphs;
+	private ArrayList<VisualGraph> graphViewports;
 
 	public GraphPanelHandler(JPanel graphPanel, int numberOfGraphs) {
 		this.graphPanel = graphPanel;
-		this.vgraphs = new ArrayList<VisualGraph>(numberOfGraphs);
+		this.graphViewports = new ArrayList<VisualGraph>(numberOfGraphs);
 
 		graphPanel.removeAll();
 		setNumberOfGraphs(numberOfGraphs);
 	}
 
 	public void setNumberOfGraphs(int amount) {
-		int currentSize = vgraphs.size();
+		int currentSize = graphViewports.size();
 		if (amount < currentSize) {
 			System.err.println("can't remove graphs because of performance issues (it's graphstream's fault!)");
 		} else {
 			for (int i = currentSize; i < amount; i++) {
 				// create an empty graph
 				VisualGraph vg = new VisualGraph(i);
-				vgraphs.add(vg);
+				graphViewports.add(vg);
 				// graph is added to panel here
 				DefaultView defaultView = vg.getDefaultView();
 				graphPanel.add(defaultView);
@@ -49,15 +49,15 @@ public class GraphPanelHandler {
 		// graphPanel.repaint();
 	}
 
-	public int getNumberOfGraphs() {
-		return vgraphs.size();
+	public int getNumberOfViewports() {
+		return graphViewports.size();
 	}
 
 	public void setupPanelSize(int panelWidth, int graphsPerColumn) {
 		int graphSize = panelWidth / graphsPerColumn - 2;
 		// graphs' views must be sized accordingly
 		// updates all the graphs' DefaultView (JComponent) size (each is a square) according to the variable graphSize
-		for (VisualGraph vgraph : vgraphs) {
+		for (VisualGraph vgraph : graphViewports) {
 			DefaultView view = vgraph.getDefaultView();
 			Dimension size = new Dimension(graphSize, graphSize);
 			view.setPreferredSize(size);
@@ -74,7 +74,7 @@ public class GraphPanelHandler {
 	 * sets up the font's size (CSS) for all the visible graphs
 	 */
 	public void updateFontsSize(int graphFontSize) {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			String style = String.format("edge { text-size: %d; } node { text-size: %d; }", graphFontSize, graphFontSize);
 			MultiGraph mgraph = vgraph.getMultiGraph();
 			mgraph.setAttribute("ui.stylesheet", style);
@@ -84,19 +84,29 @@ public class GraphPanelHandler {
 	/**
 	 * clears the graphs and updates them (adding edges from) the first N graphs of the given list
 	 * 
-	 * @param multiGraphs
+	 * @param newGraphs the list of GraphData (coming from the GraphFilter)
 	 */
 	public void refreshGraphs(List<GraphData> newGraphs) {
-		for (int i = 0; i < vgraphs.size() && i < newGraphs.size(); i++) {
-			GraphData gd = newGraphs.get(i);
-			StringGraph stringGraph = gd.getStringGraph();
-			VisualGraph visualGraph = vgraphs.get(i);
-			visualGraph.refreshGraph(stringGraph);
+		int numGraphs = newGraphs.size();
+		for (int i = 0; i < graphViewports.size(); i++) {
+			VisualGraph visualGraph = graphViewports.get(i);
+			if (i < numGraphs) {
+				GraphData gd = newGraphs.get(i);
+				StringGraph stringGraph = gd.getStringGraph();
+				visualGraph.setToolTip(gd.getToolTipText());
+				visualGraph.refreshGraph(stringGraph);
+			} else {
+				visualGraph.clear();
+				visualGraph.setToolTip(null);
+			}
 		}
 	}
 
+	/**
+	 * Clears the graphs (currently unused).
+	 */
 	public void clearGraphs() {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			vgraph.clear();
 		});
 	}
@@ -105,7 +115,7 @@ public class GraphPanelHandler {
 	 * sets up the node's size (CSS) for all the visible graphs
 	 */
 	public void updateNodesSize(int graphNodeSize) {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			MultiGraph mgraph = vgraph.getMultiGraph();
 			String style;
 			if (graphNodeSize == 0) {
@@ -118,19 +128,19 @@ public class GraphPanelHandler {
 	}
 
 	public void restartGraphsLayout() {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			vgraph.restartLayout();
 		});
 	}
 
 	public void shakeGraphs() {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			vgraph.shakeLayout();
 		});
 	}
 
 	public void stopGraphsLayout() {
-		vgraphs.parallelStream().forEach(vgraph -> {
+		graphViewports.parallelStream().forEach(vgraph -> {
 			Viewer viewer = vgraph.getViewer();
 			viewer.disableAutoLayout();
 		});
@@ -140,7 +150,7 @@ public class GraphPanelHandler {
 	 * @param factor in percent, 1...max int
 	 */
 	public void changeGraphsMagnification(int factor) {
-		for (VisualGraph vgraph : vgraphs) {
+		for (VisualGraph vgraph : graphViewports) {
 			double mag = (double) 100.0 / factor;
 			vgraph.changeMagnification(mag);
 		}
@@ -150,13 +160,13 @@ public class GraphPanelHandler {
 	 * @param angle in degrees, can be negative or positive
 	 */
 	public void changeGraphsRotation(int angleDegrees) {
-		for (VisualGraph vgraph : vgraphs) {
+		for (VisualGraph vgraph : graphViewports) {
 			vgraph.changeRotationAbsolute(angleDegrees);
 		}
 	}
 
 	public void resetViewGraphs() {
-		for (VisualGraph vgraph : vgraphs) {
+		for (VisualGraph vgraph : graphViewports) {
 			vgraph.resetView();
 		}
 	}

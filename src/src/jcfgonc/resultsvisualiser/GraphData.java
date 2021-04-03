@@ -6,8 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 
-import javax.swing.JComponent;
-
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 
 import graph.GraphReadWrite;
@@ -42,7 +40,6 @@ public class GraphData {
 		this.doubleProperties = new Object2DoubleOpenHashMap<String>();
 		this.stringProperties = new HashMap<String, String>();
 	}
-
 
 	@Override
 	public String toString() {
@@ -94,12 +91,12 @@ public class GraphData {
 		return true;
 	}
 
-	public void createToolTipText(JComponent jc) {
+	public String getToolTipText() {
 		// n:time n:relationTypes n:relationTypesStd n:cycles n:patternEdges n:patternVertices n:matches s:query s:pattern s:conceptVarMap s:hash
 		String text = "<html>";
 		for (int id = 0; id < variable2columnNumber.size(); id++) { // use tsv/user order
 			String var = variable2columnNumber.getKey(id);
-			String value = "NULL";
+			String value = null;
 			DataType dataType = variableTypes.get(var);
 			switch (dataType) {
 			case INTEGER:
@@ -114,9 +111,11 @@ public class GraphData {
 			default:
 				break;
 			}
+			if (value == null)
+				continue;
 			text += String.format("%s:\t%s<br>", var, value); // var:\tvalue
 		}
-		jc.setToolTipText(text);
+		return text;
 	}
 
 	public void saveGraphCSV(String filename) throws IOException {
