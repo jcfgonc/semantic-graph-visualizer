@@ -113,6 +113,11 @@ public class GraphData {
 			}
 			if (value == null)
 				continue;
+			// crop text if too big
+			int maxLen = 48;
+			if (value.length() > maxLen) {
+				value = value.substring(0, maxLen - 1) + "...";
+			}
 			text += String.format("%s:\t%s<br>", var, value); // var:\tvalue
 		}
 		return text;

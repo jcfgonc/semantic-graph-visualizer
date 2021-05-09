@@ -52,7 +52,7 @@ import utils.OSTools;
 
 public class GraphResultsGUI extends JFrame {
 	private static final long serialVersionUID = 5828909992252367118L;
-	private static final String graphDatafile = "C:\\Desktop\\github\\BlenderMO\\moea_results_2021-03-09_15-19-51.tsv";
+	private static final String graphDatafile = "C:\\Desktop\\github\\PatternMiner\\results\\pattern_results_with_ss_V22.tsv";
 
 	private static final int FONT_SIZE_MINIMUM = 8;
 	private static final int FONT_SIZE_DEFAULT = 18;
@@ -698,7 +698,8 @@ public class GraphResultsGUI extends JFrame {
 		GraphData gd = graphFilter.getVisibleGraphList().get(0);
 		minimumVariableLabelMap = new HashMap<>();
 		maximumVariableLabelMap = new HashMap<>();
-		for (int i = 0; i < gd.getNumberOfVars(); i++) {
+		int numberOfVars = gd.getNumberOfVars();
+		for (int i = 0; i < numberOfVars; i++) {
 			String variable = gd.getVariableFromColumnNumber(i);
 			if (!gd.isVariableNumeric(variable))
 				continue;

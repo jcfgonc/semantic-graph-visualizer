@@ -58,7 +58,11 @@ public class GraphDataRead {
 	private static GraphData createGraphData(int rowNumber, String[] cells, HashMap<String, DataType> variableTypes,
 			DualHashBidiMap<String, Integer> variable2columnNumber, String graphVariable) throws NoSuchFileException, IOException {
 		// store the graph itself
-		String graph_str = cells[variable2columnNumber.get(graphVariable)];
+		Integer graphCol = variable2columnNumber.get(graphVariable);
+		if (graphCol == null) {
+			throw new RuntimeException("unable to create the graph from the column " + graphVariable);
+		}
+		String graph_str = cells[graphCol];
 		StringGraph graph = GraphReadWrite.readCSVFromString(graph_str);
 		// create class to hold data
 		GraphData gd = new GraphData(Integer.toString(rowNumber), graph);
@@ -125,18 +129,24 @@ public class GraphDataRead {
 		for (String cell : cells) {
 			// each cell to be of the form x:y with x=datatype and y=dataname
 			String[] tokens = VariousUtils.fastSplit(cell, ':');
-			String type_s = tokens[0];
+			String type_s = tokens[0].toLowerCase();
 			String varname = tokens[1];
 			DataType type;
 			switch (type_s) {
-			case "d": {
+			case "e":
+			case "n":
+			case "u":
+			case "i": {
 				type = DataType.INTEGER;
 				break;
 			}
+			case "d":
 			case "f": {
 				type = DataType.DOUBLE;
 				break;
 			}
+			case "x":
+			case "c":
 			case "s": {
 				type = DataType.STRING;
 				break;
@@ -146,8 +156,8 @@ public class GraphDataRead {
 				break;
 			}
 			default:
-				// if not defined (but there is something) store it as a string
-				type = DataType.STRING;
+				System.err.println("unknown datatype tag " + type_s);
+				type = DataType.UNDEFINED;
 			}
 			types.put(varname, type);
 		}
