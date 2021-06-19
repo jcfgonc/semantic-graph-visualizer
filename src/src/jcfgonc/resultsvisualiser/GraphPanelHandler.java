@@ -12,6 +12,7 @@ import org.graphstream.ui.swing_viewer.DefaultView;
 import org.graphstream.ui.view.Viewer;
 
 import graph.StringGraph;
+import visual.VisualGraph;
 
 public class GraphPanelHandler {
 	/**
