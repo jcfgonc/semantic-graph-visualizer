@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -17,17 +16,17 @@ import javax.swing.JOptionPane;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 public class GraphFilter {
-	private HashMap<String, GraphData> graphMap;
 	/**
 	 * list with the n (user specified) graphs shown in the GUI/graph panel
 	 */
-	private ArrayList<GraphData> visibleGraphList; 
+	private ArrayList<GraphData> visibleGraphList;
 	/**
 	 * original unmodified graph list
 	 */
 	private ArrayList<GraphData> originalGraphList;
 	/**
-	 * copy of the graph list which is progressively edited (compared to the original list it has graphs removed and it is user-sorted)
+	 * copy of the graph list which is progressively edited (compared to the
+	 * original list it has graphs removed and it is user-sorted)
 	 */
 	private ArrayList<GraphData> graphList;
 	/**
@@ -54,8 +53,7 @@ public class GraphFilter {
 	private Object2DoubleOpenHashMap<String> variableFilterLow;
 	private Object2DoubleOpenHashMap<String> variableFilterHigh;
 
-	public GraphFilter(String graphDatafile, int numberShownGraphs) throws IOException {
-		this.graphMap = new HashMap<>();
+	public GraphFilter(int numberShownGraphs, String graphFilepath) throws IOException {
 		this.visibleGraphList = new ArrayList<>();
 		this.selectedGraphs = new HashSet<>();
 		this.deletedGraphs = new HashSet<GraphData>();
@@ -65,32 +63,17 @@ public class GraphFilter {
 		this.variableFilterLow = new Object2DoubleOpenHashMap<>();
 		this.variableFilterHigh = new Object2DoubleOpenHashMap<>();
 
-		this.originalGraphList = GraphDataRead.readTSV(graphDatafile);
+		this.originalGraphList = GraphDataRead.readTSV(graphFilepath);
 
-		System.out.format("adding MouseClickHandler\n");
 		this.graphList = new ArrayList<>(originalGraphList);
 
-		if (graphList.isEmpty())
-			return;
-
-		System.out.format("setNumberVisibleGraphs()\n");
-		setNumberVisibleGraphs(numberShownGraphs);
-
-		System.out.format("GraphFilter() done\n");
+		if (!graphList.isEmpty()) {
+			setNumberVisibleGraphs(numberShownGraphs);
+		}
 	}
 
 	/**
-	 * returns the loaded graph with the given id
-	 * 
-	 * @param id
-	 * @return
-	 */
-	public GraphData getGraph(String id) {
-		return graphMap.get(id);
-	}
-
-	/**
-	 * returns the number of loaded graphs
+	 * returns the number of edited (added/removed) graphs
 	 * 
 	 * @return
 	 */
@@ -135,17 +118,28 @@ public class GraphFilter {
 	}
 
 	/**
-	 * sets the number of graphs in the visible list, deleting or copying from the loaded list as needed. TESTED, OK.
+	 * sets the number of graphs in the visible list, deleting or copying from the
+	 * loaded list as needed. TESTED, OK.
 	 * 
 	 * @param num
 	 */
 	public void setNumberVisibleGraphs(int num) {
-		if (num > originalGraphList.size()) {
-			num = originalGraphList.size();
+		int numOriginal = getNumberOriginalGraphs();
+		if (num > numOriginal) {
+			num = numOriginal;
 		}
 
 		numberVisibleGraphs = num;
 		clearAndRefillVisibleGraphList();
+	}
+
+	/**
+	 * returns the number of loaded (original) graphs
+	 * 
+	 * @return
+	 */
+	public int getNumberOriginalGraphs() {
+		return originalGraphList.size();
 	}
 
 	private void clearAndRefillVisibleGraphList() {
@@ -154,7 +148,8 @@ public class GraphFilter {
 	}
 
 	/**
-	 * inserts graphs into the visible list from the graphList until the visible list reaches 'numberVisibleGraphs' elements. TESTED, SEEMS OK.
+	 * inserts graphs into the visible list from the graphList until the visible
+	 * list reaches 'numberVisibleGraphs' elements. TESTED, SEEMS OK.
 	 */
 	private void fillVisibleList() {
 		Iterator<GraphData> graphListIterator = graphList.iterator();
@@ -237,7 +232,8 @@ public class GraphFilter {
 	}
 
 	private void deleteAndFill(Collection<GraphData> toDelete) {
-		// only allow visible graphs to be removed (prevent removal of stuff not in the visible window)
+		// only allow visible graphs to be removed (prevent removal of stuff not in the
+		// visible window)
 		ArrayList<GraphData> _toDelete = new ArrayList<>(16);
 		HashSet<GraphData> visibleSet = new HashSet<>(visibleGraphList);
 		for (GraphData gd : toDelete) {
@@ -305,28 +301,30 @@ public class GraphFilter {
 	}
 
 	@SuppressWarnings("unused")
-	private void saveGraphsSingleCSV(Collection<GraphData> graphs, String suggestion, String title, Component parentComponent) {
+	private void saveGraphsSingleCSV(Collection<GraphData> graphs, String suggestion, String title,
+			Component parentComponent) {
 		if (graphs.isEmpty()) {
 			JOptionPane.showMessageDialog(parentComponent, "Nothing to save");
 			return;
 		}
 
 		System.err.println("TODO: saveGraphsSingleCSV() in GraphFilter");
-		String filename = (String) JOptionPane.showInputDialog(parentComponent, "Type the filename", title, JOptionPane.PLAIN_MESSAGE, null, null,
-				suggestion);
+		String filename = (String) JOptionPane.showInputDialog(parentComponent, "Type the filename", title,
+				JOptionPane.PLAIN_MESSAGE, null, null, suggestion);
 		for (GraphData gd : graphs) {
 		}
 	}
 
 	@SuppressWarnings("unused")
-	private void saveIndividualGraphs(Collection<GraphData> graphs, String suggestion, String title, Component parentComponent) {
+	private void saveIndividualGraphs(Collection<GraphData> graphs, String suggestion, String title,
+			Component parentComponent) {
 		if (graphs.isEmpty()) {
 			JOptionPane.showMessageDialog(parentComponent, "Nothing to save");
 			return;
 		}
 
-		String prefix = (String) JOptionPane.showInputDialog(parentComponent, "Type the files' prefix", title, JOptionPane.PLAIN_MESSAGE, null, null,
-				suggestion);
+		String prefix = (String) JOptionPane.showInputDialog(parentComponent, "Type the files' prefix", title,
+				JOptionPane.PLAIN_MESSAGE, null, null, suggestion);
 
 		if (prefix == null || prefix.trim().isEmpty())
 			return;
@@ -345,7 +343,8 @@ public class GraphFilter {
 				}
 			}
 		} else {
-			JOptionPane.showConfirmDialog(parentComponent, "Could not create output directory", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showConfirmDialog(parentComponent, "Could not create output directory", "Error",
+					JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -382,7 +381,8 @@ public class GraphFilter {
 	}
 
 	/**
-	 * adapts the given value (must go from 0 to 100 (inclusive)) to be between the variable's low and high range
+	 * adapts the given value (must go from 0 to 100 (inclusive)) to be between the
+	 * variable's low and high range
 	 * 
 	 * @param variable
 	 * @param value
